@@ -1,0 +1,33 @@
+from __gin__ import dynamic_registration
+
+import torch
+
+from src import dataset
+from src import task_functions
+
+MODEL_DIM = 512
+EMB_DIM = 256
+NUM_TOKENS = 7928
+NUM_QUANTIZERS = 1
+DROPOUT_RATE = 0.3
+NUM_HEADS = 8
+SEQ_LEN = 1200
+HEAD_DIM = 32
+NUM_LAYERS = 8
+LR = 1e-3
+
+
+dataset.Task:
+    read_fn = @task_functions.pitch_read_downsample
+    invert_fn = @task_functions.invert_pitch_read_downsample
+    kwargs = {"seq_len": %SEQ_LEN, 
+                    "decoder_key": "pitch",
+                    "min_norm_pitch": -4915,
+                    "time_downsample": 2,
+                    "pitch_downsample": 10,
+                    "base_tonic": 440.}
+
+dataset.SequenceDataset:
+    task = @dataset.Task()
+    apply_transform = False
+

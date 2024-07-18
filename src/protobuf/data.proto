@@ -1,0 +1,35 @@
+syntax = "proto2";
+
+package data_example;
+
+message DataVal {
+
+  enum Precision {
+    FLOAT16 = 0;
+    FLOAT32 = 1;
+    FLOAT64 = 2;
+    INT16 = 3;
+    INT32 = 4;
+    INT64 = 5;
+    RAW = 6;
+  }
+
+  message DataBuffer {
+    repeated int32 shape = 1;
+    optional float sampling_rate = 2;
+    required bytes data = 3;
+    optional Precision precision = 4;
+    optional string data_path = 5;
+    optional float start_time = 6;
+  }
+
+  message GlobalConditions {
+    optional float tonic = 1;
+    optional int32 raga = 2;
+    optional int32 singer = 3;
+  }
+
+  map<string, DataBuffer> buffers = 1;
+  optional GlobalConditions global_conditions = 2;
+  
+}

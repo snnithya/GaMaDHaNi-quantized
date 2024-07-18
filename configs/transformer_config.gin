@@ -1,0 +1,68 @@
+from __gin__ import dynamic_registration
+
+import torch
+
+from src import model_transformer
+from utils import utils
+from src import dataset
+from src import task_functions
+
+MODEL_DIM = 512
+EMB_DIM = 256
+NUM_TOKENS = 7928
+NUM_QUANTIZERS = 1
+DROPOUT_RATE = 0.3
+NUM_HEADS = 8
+SEQ_LEN = 1200
+HEAD_DIM = 32
+NUM_LAYERS = 8
+LR = 1e-3
+
+
+xtransformers_alibi.XTransformerPrior:
+    num_tokens = %NUM_TOKENS
+    seq_len = %SEQ_LEN
+    model_dim = %MODEL_DIM
+    emb_dim = %EMB_DIM
+    head_dim = %HEAD_DIM
+    num_layers = %NUM_LAYERS
+    num_heads = %NUM_HEADS
+    dropout_rate = %DROPOUT_RATE
+    tonic_vocab = 1061
+    tonic_min = -2110
+    tonic_norm = True
+    concat_embed = True
+    conditional_dropout_prob = 0.2
+
+xtransformers_alibi.XTransformerPrior.configure_optimizers:
+    optimizer_cls = @torch.optim.AdamW
+    scheduler_cls = @utils.build_warmed_exponential_lr_scheduler
+
+utils.build_warmed_exponential_lr_scheduler:
+    start_factor = .01
+    peak_iteration = 10000
+    cycle_length = 394600
+    eta_min = 0.1
+    eta_max = %LR
+
+utils.set_seed:
+    seed = 2023
+
+torch.optim.AdamW:
+    lr = %LR
+    betas = (.9, .98)
+
+dataset.Task:
+    read_fn = @task_functions.pitch_read_downsample
+    invert_fn = @task_functions.invert_pitch_read_downsample
+    common_args = {"seq_len": %SEQ_LEN, 
+                    "decoder_key": "pitch",
+                    "min_norm_pitch": -4915,
+                    "num_tokens": %NUM_TOKENS,
+                    "time_downsample": 2,
+                    "pitch_downsample": 10}
+
+dataset.SequenceDataset:
+    task_fn = @dataset.Task()
+    apply_transform = True
+
