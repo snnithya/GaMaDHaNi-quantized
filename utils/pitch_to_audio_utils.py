@@ -1,11 +1,12 @@
 import math
 import librosa as li
 import torch
+from torch.nn.functional import interpolate
 from tqdm import tqdm
 import numpy as np
 import gin
 import logging
-
+import matplotlib.pyplot as plt
 import pdb
 
 @gin.configurable
@@ -119,3 +120,11 @@ def normalized_mels_to_audio(x, nfft, num_mels, sr, qt, n_iter=20):
     x = torch.clamp(x, 0, nfft)
     x = torch_gl(x, nfft, sr, n_iter=n_iter)
     return x
+
+def interpolate_pitch(pitch, audio_seq_len):
+    pitch = torch.Tensor(pitch)
+    pitch = interpolate(pitch, size=audio_seq_len, mode='linear')
+    # plt.plot(pitch[0].squeeze(0).detach().cpu().numpy())
+    # plt.savefig(f"./temp/interpolated_pitch.png")
+    # plt.close()
+    return pitch

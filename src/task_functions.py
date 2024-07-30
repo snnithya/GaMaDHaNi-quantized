@@ -15,22 +15,20 @@ def pitch_read_downsample(inputs: TensorDict,
                           time_downsample: int=1, 
                           pitch_downsample: int=1,
                           base_tonic: float=440.,
-                          transpose_pitch: Optional[int]=0,):
-
+                          transpose_pitch: Optional[int]=0,
+                          start: Optional[int]=None):
         data = inputs[decoder_key]["data"]
-        features = inputs["global_conditions"]
-        
         if seq_len is not None:
-            start = randint(0, data.shape[0] - seq_len * time_downsample - 1)
+            start = start if start is not None else randint(0, max(0, data.shape[0] - seq_len * time_downsample - 1))
             end = start + seq_len * time_downsample
             
-            f0 = data[start : end+1 : time_downsample].copy()
+            f0 = data[start : end+1 : time_downsample].clone()
         else:
-            f0 = data.copy()
+            f0 = data.clone()
 
         # normalizing pitch contour from hertz to cents
         f0[f0 == 0] = np.nan
-        norm_f0 = f0.copy()
+        norm_f0 = f0.clone().numpy()
         norm_f0[~np.isnan(norm_f0)] = (1200) * np.log2(norm_f0[~np.isnan(norm_f0)] / base_tonic)
         del f0
 
@@ -51,19 +49,19 @@ def pitch_read_downsample(inputs: TensorDict,
 
         input_tokens = norm_f0[:-1, None].copy()
         target_tokens = norm_f0[1:, None].copy()
-
         return {
-            # "encoder_inputs": torch.Tensor([]),
             "decoder_inputs": input_tokens,
             "decoder_targets": target_tokens,
-            "condition": list(features.values())
+            "sampled_sequence": norm_f0
         }
 
 def invert_pitch_read_downsample(f0,
                           min_norm_pitch: int,  
                           time_downsample: int=1, 
                           pitch_downsample: int=1,
-                          base_tonic: float=440.):
+                          base_tonic: float=440.,
+                          seq_len: int=None, 
+                          decoder_key: str=None):
     f0[f0 == 0] = np.nan
     f0[~np.isnan(f0)] = ((f0[~np.isnan(f0)] - 1) * pitch_downsample)
     f0[~np.isnan(f0)] = f0[~np.isnan(f0)] + min_norm_pitch

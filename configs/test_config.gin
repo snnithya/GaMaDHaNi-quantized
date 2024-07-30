@@ -1,12 +1,12 @@
 from __gin__ import dynamic_registration
 
 import torch
-
+from src import model_transformer
 from src import dataset
 from src import task_functions
 
 MODEL_DIM = 512
-EMB_DIM = 256
+EMB_DIM = 512
 NUM_TOKENS = 7928
 NUM_QUANTIZERS = 1
 DROPOUT_RATE = 0.3
@@ -16,6 +16,16 @@ HEAD_DIM = 32
 NUM_LAYERS = 8
 LR = 1e-3
 
+model_transformer.XTransformerPrior:
+    num_tokens = %NUM_TOKENS
+    seq_len = %SEQ_LEN
+    model_dim = %MODEL_DIM
+    emb_dim = %EMB_DIM
+    head_dim = %HEAD_DIM
+    num_layers = %NUM_LAYERS
+    num_heads = %NUM_HEADS
+    dropout_rate = %DROPOUT_RATE
+    
 
 dataset.Task:
     read_fn = @task_functions.pitch_read_downsample

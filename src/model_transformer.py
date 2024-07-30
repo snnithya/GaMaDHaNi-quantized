@@ -1,122 +1,23 @@
-# 1. clean the xtransformers.py (which is currently a combinaton of 
-    # a. attend.py
-    # b. x_transformers.py
-    # c. autoregressive_wrapper.py
-    # d. xl_autoregressive_wrapper.py (maybe remove this?)
-
-# 2. install the lucirains repo and note the main changes and OVERRIDE them in THIS script
-    #    class TransformerWrapperMod(TransformerWrapper from lucidrains):
-    
-# 3. make it neatly configurable PLISSSSSSS
-
-# 4. just the xtransformer_alibi.py script again here, but remove ununsed parts
-# Intention: combine the 2 files we had (xtransformers and xtransformers_alibi)
-
-
-# 1a. Attend.py
-    # Intermediates
-    # helper functions
-    # attend class
-        # - flash attention
-        # - forward
-    
-    # -> intermediates and helper functions
-    #     - no changes, just deletions, no need to override
-
-    # -> attend
-        # - not using flash attention
-        # - no changes in forward, just structural changes, no need to override
-
-
-# 1b. x_transformers.py
-    #######################
-    # LayerIntermediates
-
-    # #######################
-    # helper functions
-    #     - structured dropout, more effective than traditional attention dropouts
-    #     - apply_rotary_pos_emb
-    # helper classes
-    #     - activations
-    # ReluSquared
-    # Embedding classes
-    #     TokenEmbedding
-    #     AbsolutePositionalEmbedding
-    #     ScaledSinusoidalEmbedding
-    #     RelativePositionBias
-    #     CoPE
-    #     DynamicPositionBias
-    #     AlibiPositionalBias
-    #     RotaryEmbedding
-    # Normalization classes
-    #     Scale
-    #     LayerNorm
-    #     AdaptiveLayerNorm
-    #     ScaleNorm
-    #     RMSNorm
-    #     AdaptiveRMSNorm
-    #     SimpleRMSNorm
-    # Residual Gate Classes
-    #     Residual
-    #     GRUGating
-    # token shifting
-    #     ShiftTokens
-    # post branch operator
-    #     LayerScale
-    #     AdaptiveLayerScale
-
-    # #######################
-    # feedforward
-    #     GLU
-    #     FeedForward
-
-    # #######################
-    # Attention
-        # -> seems like restructured only, no need to override
-    # AttentionLayers
-        # -> check TransformerWrapper
-    # Encoder (inherits AttentionLayers)
-    # Decoder (inherits AttentionLayers)
-    # PrefixDecoder (inherits AttentionLayers)
-    # CrossAttender (inherits AttentionLayers)
-
-    # #######################
-    # ViTransformerWrapper
-    #     -> not using in the project at all, no need to override
-    # TransformerWrapper
-    #     -> added conditioning, yes need to override (not for now)
-    #     -> layerNorm after the attn_layers, whereas this norm is included in attn layers in original, so no need to override
-    # #######################
-    # XTransformer
-    #     -> useful only for the encoder+decoder usecase, hence my version does not have it, no need to override 
-
-# 1c. autoregressive_wrapper.py
-    #######################
-    # sampling methods
-    #     - nucleus is a bit different, but not being used in our experiments, so no need to override for now
-    # AutoregressiveWrapper
-    #     - generate
-    #         -> different, yes need to override
-    #     - forward
-    #         -> yes need to override
 import logging
 import math
 from typing import Callable, Dict, Optional, Sequence, Tuple
 import gin
+from tqdm import tqdm
 
+from einops import rearrange, pack, unpack
 import pytorch_lightning as pl
 import torch
 torch.cuda.empty_cache()
 import torch.nn as nn
+import torch.nn.functional as F
 
 #CHANGE THIS - should not need to add path
 import sys
 sys.path.append('/home/mila/k/krishna-maneesha.dendukuri/x-transformers')
 from x_transformers.x_transformers import TransformerWrapper, Decoder, AutoregressiveWrapper
-from x_transformers.x_transformers import eval_decorator, top_k
+from x_transformers.autoregressive_wrapper import top_p, top_k, eval_decorator
 import pdb
 TensorDict = Dict[str, torch.Tensor]
-
 
 class extendedAutoregressiveWrapper(AutoregressiveWrapper):
     def __init__(self,
@@ -133,13 +34,10 @@ class extendedAutoregressiveWrapper(AutoregressiveWrapper):
     def sample_fn(self,
                   batch_size: int=1,
                   prime=None,
-                  seq_len: int=2400,
+                  seq_len: int=1200,
                   temperature: float=1.,
                   filter_logits_fn = top_k,
-                  filter_thres: float=0.9,
-                  verbose: bool=False,
-                  return_prime: bool=False,
-                  device: str=None,
+                  filter_fn_param: float=40,  #k=40 for top_k sampling
                   **kwargs):
         
         if type(prime)==tuple:
@@ -149,24 +47,18 @@ class extendedAutoregressiveWrapper(AutoregressiveWrapper):
         prime, ps = pack([prime], '* n')
         out = prime
 
-        if verbose:    
-            print("Generating sequence of max length:", seq_len)
+        print("Generating sequence of max length:", seq_len)
         for s in tqdm(range(seq_len)):
             x = out[:, -self.max_seq_len:]
-            logits = self.net((x, features), **kwargs)[:, -1]
+            logits = self.net(x, **kwargs)[:, -1]
 
             if filter_logits_fn == top_k:
-                filtered_logits = filter_logits_fn(logits, thres = filter_thres)
+                filtered_logits = filter_logits_fn(logits, k = filter_fn_param)
                 probs = F.softmax(filtered_logits / temperature, dim=-1)
             sample = torch.multinomial(probs, 1)
 
             out = torch.cat((out, sample), dim=-1)
 
-        if return_prime:
-            out =  out[:, :]  
-        else:
-            out =  out[:, t:]
-        
         out, = unpack(out, ps, '* n')
         return out
 
@@ -206,7 +98,7 @@ class extendedAutoregressiveWrapper(AutoregressiveWrapper):
         acc = num_right / len(labels) 
         return acc
 
-
+@gin.configurable
 class XTransformerPrior(pl.LightningModule):
     def __init__(self,
                  num_tokens: int,
@@ -236,9 +128,10 @@ class XTransformerPrior(pl.LightningModule):
                             num_tokens = self.num_tokens,
                             max_seq_len = self.seq_len,       #setting the same as the seq_len
                             emb_dim = self.emb_dim,
+                            # dim = self.model_dim,   #only old impln
                             attn_layers = Decoder(
                                 dim = self.model_dim,     #because we concat the condition with pitch
-                                dim_head = self.head_dim,
+                                attn_dim_head = self.head_dim,
                                 depth = self.num_layers,
                                 heads = self.num_heads,
                                 attn_dropout=self.dropout_rate,  # dropout post-attention
@@ -248,5 +141,18 @@ class XTransformerPrior(pl.LightningModule):
                                 )
                             ),
                         )
+    def sample_fn(self,
+                  **kwargs):
+        return self.model.sample_fn(**kwargs)
+    
+    # def on_validation_epoch_end(self) -> None:
+    #     #include the call to the sample function
+    #     #call the plot and save functions to log the output
+    #     #log on wandb
 
- 
+    # def validation_step(self, batch, batch_idx):
+
+    # def training_step(self, batch, batch_idx): 
+    #     #call forward and not sample_fn
+
+

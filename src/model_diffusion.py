@@ -11,15 +11,15 @@ import matplotlib.pyplot as plt
 import gin
 import os
 import pandas as pd
-import src.pitch_to_audio_utils as p2a
+import utils.pitch_to_audio_utils as p2a
 import torchaudio
 from typing import Callable
 from pytorch_lightning.utilities import grad_norm
 
 import sys
 # sys.path.append('..')
+from utils.utils import prob_mask_like
 sys.path.append('/home/mila/k/krishna-maneesha.dendukuri/x-transformers')
-from src.utils import prob_mask_like
 from x_transformers.x_transformers import AttentionLayers
 import pdb
 

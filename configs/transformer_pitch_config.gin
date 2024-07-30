@@ -19,7 +19,7 @@ NUM_LAYERS = 8
 LR = 1e-3
 
 
-xtransformers_alibi.XTransformerPrior:
+model_transformer.XTransformerPrior:
     num_tokens = %NUM_TOKENS
     seq_len = %SEQ_LEN
     model_dim = %MODEL_DIM

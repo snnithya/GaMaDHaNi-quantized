@@ -1,0 +1,91 @@
+from __gin__ import dynamic_registration
+from src import dataset
+from src import model_diffusion
+from utils import pitch_to_audio_utils
+from utils import utils
+import torch
+
+# Macros:
+# ==============================================================================
+AUDIO_SEQ_LEN = 750
+LR = 0.0001
+NFFT = 1024
+NUM_MELS = 192
+SINGER_CONDITIONING = True
+SR = 16000
+
+# Parameters for torch.optim.AdamW:
+# ==============================================================================
+torch.optim.AdamW.betas = (0.9, 0.99)
+torch.optim.AdamW.lr = 0.0001
+
+# Parameters for utils.build_warmed_exponential_lr_scheduler:
+# ==============================================================================
+utils.build_warmed_exponential_lr_scheduler.cycle_length = 480000
+utils.build_warmed_exponential_lr_scheduler.eta_max = %LR
+utils.build_warmed_exponential_lr_scheduler.eta_min = 0.1
+utils.build_warmed_exponential_lr_scheduler.peak_iteration = 10000
+utils.build_warmed_exponential_lr_scheduler.start_factor = 0.01
+
+# Parameters for model_diffusion.UNetPitchConditioned.configure_optimizers:
+# ==============================================================================
+model_diffusion.UNetPitchConditioned.configure_optimizers.optimizer_cls = @torch.optim.AdamW
+model_diffusion.UNetPitchConditioned.configure_optimizers.scheduler_cls = \
+    @utils.build_warmed_exponential_lr_scheduler
+
+# Parameters for pitch_to_audio_utils.from_mels:
+# ==============================================================================
+pitch_to_audio_utils.from_mels.nfft = %NFFT
+pitch_to_audio_utils.from_mels.num_mels = %NUM_MELS
+pitch_to_audio_utils.from_mels.sr = %SR
+
+# Parameters for pitch_to_audio_utils.normalized_mels_to_audio:
+# ==============================================================================
+pitch_to_audio_utils.normalized_mels_to_audio.n_iter = 100
+pitch_to_audio_utils.normalized_mels_to_audio.nfft = %NFFT
+pitch_to_audio_utils.normalized_mels_to_audio.num_mels = %NUM_MELS
+pitch_to_audio_utils.normalized_mels_to_audio.sr = %SR
+
+# Parameters for dataset.SequenceDataset:
+# ==============================================================================
+dataset.SequenceDataset.task = @dataset.Task()
+
+dataset.Task.read_fn = @dataset.load_cached_dataset
+dataset.Task.kwargs = {"audio_len": %AUDIO_SEQ_LEN,
+                       "return_singer": %SINGER_CONDITIONING} 
+
+# Parameters for pitch_to_audio_utils.torch_gl:
+# ==============================================================================
+pitch_to_audio_utils.torch_gl.n_iter = 200
+pitch_to_audio_utils.torch_gl.nfft = %NFFT
+pitch_to_audio_utils.torch_gl.sr = %SR
+
+# Parameters for pitch_to_audio_utils.torch_istft:
+# ==============================================================================
+pitch_to_audio_utils.torch_istft.nfft = %NFFT
+
+# Parameters for model_diffusion.UNetPitchConditioned:
+# ==============================================================================
+model_diffusion.UNetPitchConditioned.audio_seq_len = %AUDIO_SEQ_LEN
+model_diffusion.UNetPitchConditioned.cfg = True
+model_diffusion.UNetPitchConditioned.cond_drop_prob = 0.2
+model_diffusion.UNetPitchConditioned.dropout = 0.3
+model_diffusion.UNetPitchConditioned.f0_dim = 128
+model_diffusion.UNetPitchConditioned.features = [512, 640, 1024]
+model_diffusion.UNetPitchConditioned.inp_dim = %NUM_MELS
+model_diffusion.UNetPitchConditioned.kernel_size = 5
+model_diffusion.UNetPitchConditioned.log_samples_every = 10
+model_diffusion.UNetPitchConditioned.log_wandb_samples_every = 50
+model_diffusion.UNetPitchConditioned.loss_w_padding = True
+model_diffusion.UNetPitchConditioned.nonlinearity = 'mish'
+model_diffusion.UNetPitchConditioned.norm = False
+model_diffusion.UNetPitchConditioned.num_attns = 4
+model_diffusion.UNetPitchConditioned.num_convs = 4
+model_diffusion.UNetPitchConditioned.num_heads = 8
+model_diffusion.UNetPitchConditioned.project_dim = 256
+model_diffusion.UNetPitchConditioned.singer_conditioning = %SINGER_CONDITIONING
+model_diffusion.UNetPitchConditioned.singer_dim = 128
+model_diffusion.UNetPitchConditioned.singer_vocab = 55
+model_diffusion.UNetPitchConditioned.sr = %SR
+model_diffusion.UNetPitchConditioned.strides = [4, 2, 2]
+model_diffusion.UNetPitchConditioned.time_dim = 128
