@@ -50,6 +50,8 @@ pitch_to_audio_utils.normalized_mels_to_audio.sr = %SR
 # ==============================================================================
 dataset.SequenceDataset.task = @dataset.Task()
 
+# Parameters for dataset.Task:
+# ==============================================================================
 dataset.Task.read_fn = @dataset.load_cached_dataset
 dataset.Task.kwargs = {"audio_len": %AUDIO_SEQ_LEN,
                        "return_singer": %SINGER_CONDITIONING} 

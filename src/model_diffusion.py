@@ -481,9 +481,7 @@ class UNet(UNetBase):
                     x_alpha_t[:, :, :prime.shape[-1]] = ((1 - alpha_t) * noise[:, :, :prime.shape[-1]]) + (alpha_t * prime) # fill in the prime in the beginning of each x_t
                 diff =  self.forward(x_alpha_t, t_tensor * t_array)
                 x_alpha_t = x_alpha_t + 1 / num_steps * diff
-                # x_alpha_ts[t] = x_alpha_t
-            # if prime is not None:
-            #     x_alpha_t[:, :, :prime.shape[-1]] = prime
+                
         return x_alpha_t
 
     def sample_sdedit(self, cond, batch_size, num_steps, t0=0.5):
@@ -1042,6 +1040,7 @@ class UNetPitchConditioned(UNetBase):
         noise = torch.normal(mean=0, std=1, size=(batch_size, self.inp_dim, self.seq_len)).to(self.device)
         padded_noise, padding = self.pad_to(noise, self.strides_prod)
         t_array = torch.ones((batch_size,)).to(self.device)
+        pdb.set_trace()
         f0 = f0.to(self.device)
         padded_f0, _ = self.pad_to(f0, self.strides_prod)
         singer = singer.to(self.device)

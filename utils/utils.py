@@ -77,7 +77,6 @@ def get_device():
 def plot(f0_array: np.ndarray=None, time_array: np.ndarray=None, prime: bool=True):
     fig, ax = plt.subplots()
 
-    pdb.set_trace()
     # to plot silences as gaps in the contour
     f0_array = np.where(f0_array == 0, np.nan, f0_array)
     time_array = np.arange(len(f0_array)) / 100  #time downsampling
@@ -86,7 +85,7 @@ def plot(f0_array: np.ndarray=None, time_array: np.ndarray=None, prime: bool=Tru
         ax.plot(time_array[:split_index], f0_array[:split_index], color='blue', label='Prime')
         ax.plot(time_array[split_index:], f0_array[split_index:], color='red', label='Generated Pitch')
     else:
-        ax.plot(time_array, f0_array, label='Generated Pitch', color='red')
+        ax.plot(time_array, f0_array, color='red', label='Generated Pitch')
 
     ax.set_xlabel('Time (s)')
     ax.set_ylabel('Frequency (cents)')

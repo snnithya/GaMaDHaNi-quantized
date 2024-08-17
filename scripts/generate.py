@@ -9,7 +9,6 @@ from functools import partial
 import gin
 from absl import flags, app
 import sys
-# sys.path.append('./')
 import sys
 sys.path.append("/home/mila/k/krishna-maneesha.dendukuri/GaMaDHaNi")
 sys.path.append("/home/mila/k/krishna-maneesha.dendukuri/GaMaDHaNi/src")
@@ -63,7 +62,12 @@ flags.DEFINE_list('singers', default=[3], help='Used by the pitch to audio model
 
 def load_pitch_fns(pitch_path, model_type, prime=False, prime_file=None, number_of_samples=16):
     # config_path = os.path.join(pitch_path, 'config.gin')
-    config_path = "/home/mila/k/krishna-maneesha.dendukuri/GaMaDHaNi/configs/test_config.gin"
+    # config_path = "/home/mila/k/krishna-maneesha.dendukuri/GaMaDHaNi/configs/diffusion_pitch_config.gin"
+    config_path = "/home/mila/k/krishna-maneesha.dendukuri/GaMaDHaNi/configs/transformer_pitch_config.gin"
+
+    if prime:
+        assert prime_file, \
+            "Error: If 'prime' is True, either 'prime_file' must be provided."
     gin.parse_config_file(config_path)  
     if model_type=="diffusion":
         qt_path = os.path.join(pitch_path, 'qt.joblib')
@@ -73,36 +77,45 @@ def load_pitch_fns(pitch_path, model_type, prime=False, prime_file=None, number_
     seq_len = gin.query_parameter("%SEQ_LEN")
     time_downsample = gin.query_parameter('dataset.Task.kwargs').get("time_downsample")
     seq_len_cache = int((1/3) * seq_len)
-
-    if prime:
-        assert prime_file, \
-            "Error: If 'prime' is True, either 'prime_file' or 'dataset_split_yaml_file' must be provided."
-        pitch_model, pitch_qt, primes = load_pitch_model(
-            config = config_path, 
-            ckpt = os.path.join(pitch_path, 'models', 'last.ckpt'), 
-            qt = qt_path,
-            prime_file = prime_file,
-            model_type = model_type,
-            number_of_samples=number_of_samples
-            )
     
-    else:
+    pitch_model, pitch_qt, primes = load_pitch_model(
+        config = config_path, 
+        ckpt = os.path.join(pitch_path, 'models', 'last.ckpt'), 
+        qt = qt_path,
+        prime_file = prime_file,
+        model_type = model_type,
+        number_of_samples=number_of_samples
+        )
+    
+    if not prime:
         #unprimed generation
         if model_type=="transformer":
             #get start token (sampling a start token from a popular range in validation set) -> primes
-            primes = np.random.randint(low=154,high=222) 
+            primes = np.random.randint(low=154,high=222, size=(number_of_samples,1)).astype(np.float64)
         else:
             primes = None
 
     task_obj = Task()
-    pitch_task_fn = partial(task_obj.read_)
-    invert_pitch_task_fn = partial(task_obj.invert_)
-
+    pitch_task_fn = partial(task_obj.read_) # , qt_transform = pitch_qt, add_noise_to_silence = True)
+    invert_pitch_task_fn = partial(task_obj.invert_) #, qt_transform = pitch_qt)
+    processed_primes = None
     if prime:
+        if model_type=="diffusion":
+            pitch_task_fn = partial(pitch_task_fn, qt_transform = pitch_qt, add_noise_to_silence = True)
+            invert_pitch_task_fn = partial(invert_pitch_task_fn, qt_transform = pitch_qt)
+        
         processed_primes = [torch.tensor(pitch_task_fn(
-                **{"inputs": {"pitch": {"data": torch.tensor(p[:seq_len_cache*time_downsample:])}}})["sampled_sequence"]) for p in primes]
-        processed_primes = torch.stack(processed_primes)
-        primes = processed_primes
+                    **{"inputs": {"pitch": {"data": torch.tensor(p[:seq_len_cache*time_downsample:])}}})["sampled_sequence"]) for p in primes]    
+        primes = torch.stack(processed_primes)
+
+    else:
+        if model_type=="transformer":
+            processed_primes = [torch.tensor(pitch_task_fn(
+                **{"inputs": {"pitch": {"data": torch.tensor(p)}}})["sampled_sequence"]) for p in primes]
+            primes = torch.stack(processed_primes)
+        else:
+            invert_pitch_task_fn = partial(invert_pitch_task_fn, qt_transform = pitch_qt)
+            primes = None
     return pitch_model, pitch_qt, pitch_task_fn, invert_pitch_task_fn, primes
 
 def load_audio_fns(audio_path, db_path_audio):
@@ -132,7 +145,8 @@ def generate_pitch(pitch_model,
                    num_steps=None, 
                    outfolder=None, 
                    processed_primes=None,
-                   pitch_sample_rate=200):
+                   pitch_sample_rate=200,
+                   prime=False):
     if pitch_model_type=="diffusion":
         samples = pitch_model.sample_fn(batch_size=num_samples, num_steps=num_steps, prime=processed_primes) # keep only 4s
     else:
@@ -141,8 +155,8 @@ def generate_pitch(pitch_model,
     inverted_pitches = [invert_pitch_fn(**{"f0": sample}) for sample in samples.detach().cpu().numpy()]
 
     if outfolder is not None:
-        for i, pitch in enumerate(samples):
-            fig = plot(f0_array=pitch.detach().cpu().numpy(), time_array=np.arange(0, len(pitch) / pitch_sample_rate, 1/pitch_sample_rate))
+        for i, pitch in enumerate(inverted_pitches):
+            fig = plot(f0_array=pitch, time_array=np.arange(0, len(pitch) / pitch_sample_rate, 1/pitch_sample_rate), prime=prime)
             save_figure(fig, dest_path=f"{outfolder}/pitch/{i}.png")
     return samples, inverted_pitches
 
@@ -155,7 +169,7 @@ def generate_audio(audio_model, f0s, invert_audio_fn, outfolder, singers=[3], nu
         os.makedirs(outfolder, exist_ok=True)
         for i, a in enumerate(audio):
             logging.log(logging.INFO, f"Saving audio {i}")
-            save_audio(audio_array=torch.tensor(a).detach().unsqueeze(0).cpu(), dest_path=f"{outfolder}/audio/{i}.wav", sample_rate=16000)
+            save_audio(audio_array=a.clone().detach().unsqueeze(0).cpu(), dest_path=f"{outfolder}/audio/{i}.wav", sample_rate=16000)
             # save_csv()
     return audio
 
@@ -172,6 +186,7 @@ def generate(audio_model=None,
             outfolder='temp', 
             audio_seq_len=750, 
             pitch_qt=None, 
+            prime=False,
             processed_primes=None, 
             device=None):
     
@@ -186,15 +201,11 @@ def generate(audio_model=None,
                                            outfolder=outfolder, 
                                            seq_len=seq_len,
                                            temperature=temperature,
-                                           processed_primes=processed_primes)
-    if pitch_qt is not None:
-        def undo_qt(x, min_clip=200):
-            pitch= pitch_qt.inverse_transform(x.reshape(-1, 1)).reshape(1, -1)
-            pitch = np.around(pitch) # round to nearest integer, done in preprocessing of pitch contour fed into model
-            pitch[pitch < 200] = np.nan
-            return pitch
-        pitch = torch.tensor(np.array([undo_qt(x) for x in pitch.detach().cpu().numpy()])).to(pitch_model.device)
-    pitch = pitch.unsqueeze(1)
+                                           processed_primes=processed_primes,
+                                           pitch_sample_rate=100,
+                                           prime=prime)
+    
+    pitch = pitch.unsqueeze(1) if pitch.dim()==2 else pitch
     interpolated_pitch = p2a.interpolate_pitch(pitch=pitch, audio_seq_len=audio_seq_len)
     interpolated_pitch = torch.nan_to_num(interpolated_pitch, nan=196)
     interpolated_pitch = interpolated_pitch.squeeze(1).float() # to match input size by removing the extra dimension
@@ -228,7 +239,8 @@ def main(argv):
                                                                                    prime_file=prime_file, 
                                                                                    number_of_samples=number_of_samples)  
 
-    audio_model, audio_qt, audio_seq_len, invert_audio_fn = load_audio_fns(audio_path, db_path_audio)
+    audio_model, audio_qt, audio_seq_len, invert_audio_fn = load_audio_fns(audio_path=audio_path, 
+                                                                           db_path_audio=db_path_audio)
   
     # 3. generate (I) pitch and (II) convert pitch to audio
     primes = primes.to(device) if primes is not None else None
@@ -243,6 +255,7 @@ def main(argv):
                             outfolder=outfolder, 
                             seq_len=seq_len_gen,
                             temperature=temperature,
+                            prime=prime,
                             processed_primes=primes,
                             device=device)
 
