@@ -8,10 +8,11 @@ import os
 from functools import partial
 import gin
 from absl import flags, app
-import sys
-import sys
-sys.path.append("/home/mila/k/krishna-maneesha.dendukuri/GaMaDHaNi")
-sys.path.append("/home/mila/k/krishna-maneesha.dendukuri/GaMaDHaNi/src")
+import GaMaDHaNi
+from GaMaDHaNi import src, utils, scripts
+# import sys
+# Dsys.path.append("/home/mila/k/krishna-maneesha.dendukuri/GaMaDHaNi")
+# sys.path.append("/home/mila/k/krishna-maneesha.dendukuri/GaMaDHaNi/src")
 from src.protobuf.data_example import AudioExample
 from src.dataset import Task
 from utils.generate_utils import load_pitch_model, load_audio_model
@@ -25,22 +26,6 @@ import pdb
 import logging
 import time
 import soundfile as sf
-
-"""
-Generate script flow:
-
-2. take in args - pitch -----Done
-    a.transformer
-    b. diffusion
-3. take in args - audio -----Done
-4. load data --- Done
-5. load model -----Done
-6. prime or not --- Done
-7. model(data) -- Done
-8. invert pitch/plot/save/
-9. generate audio
-19. plot/save
-"""
 
 
 FLAGS = flags.FLAGS
@@ -58,12 +43,11 @@ flags.DEFINE_integer('seq_len', default=1200, help='Used when pitch_model_type==
 flags.DEFINE_float('temperature', default=1.0, help='Used when pitch_model_type==transformer, controls randomness in sampling; lower values (< 1.0) produce more deterministic results, while higher values (> 1.0) increase diversity. ')
 flags.DEFINE_integer('num_steps', default=100, help='Used when pitch_model_type==diffusion, the number of diffusion steps for the model; more steps can improve quality but increase computation time.')
 flags.DEFINE_list('singers', default=[3], help='Used by the pitch to audio model, singer IDs for the singer conditioning')
+flags.DEFINE_string('pitch_config_path', default=None, help='config file path for the pitch generation model')
+flags.DEFINE_string('audio_config_path', default=None, help='config file path for the pitch to audio generation model')
 
-
-def load_pitch_fns(pitch_path, model_type, prime=False, prime_file=None, number_of_samples=16):
-    # config_path = os.path.join(pitch_path, 'config.gin')
-    # config_path = "/home/mila/k/krishna-maneesha.dendukuri/GaMaDHaNi/configs/diffusion_pitch_config.gin"
-    config_path = "/home/mila/k/krishna-maneesha.dendukuri/GaMaDHaNi/configs/transformer_pitch_config.gin"
+def load_pitch_fns(pitch_path, model_type, prime=False, prime_file=None, number_of_samples=16, config_path=None):
+    config_path = os.path.join(pitch_path, 'config.gin') if not config_path else config_path
 
     if prime:
         assert prime_file, \
@@ -118,10 +102,9 @@ def load_pitch_fns(pitch_path, model_type, prime=False, prime_file=None, number_
             primes = None
     return pitch_model, pitch_qt, pitch_task_fn, invert_pitch_task_fn, primes
 
-def load_audio_fns(audio_path, db_path_audio):
+def load_audio_fns(audio_path, db_path_audio, config_path=None):
     ckpt = os.path.join(audio_path, 'models', 'last.ckpt')
-    # config = os.path.join(audio_path, 'config.gin')
-    config = "/home/mila/k/krishna-maneesha.dendukuri/GaMaDHaNi/configs/pitch_to_audio_config.gin"
+    config = os.path.join(audio_path, 'config.gin') if not config_path else config_path
     qt = os.path.join(db_path_audio, 'qt.joblib')
 
     audio_model, audio_qt = load_audio_model(config, ckpt, qt)
@@ -193,6 +176,8 @@ def generate(audio_model=None,
     logging.log(logging.INFO, 'Generate function')
 
     pitch_model = pitch_model.to(device) 
+    processed_primes = processed_primes.to(device) if prime else None
+
     pitch, inverted_pitch = generate_pitch(pitch_model=pitch_model,
                                            pitch_model_type=pitch_model_type,
                                            invert_pitch_fn=invert_pitch_fn, 
@@ -227,6 +212,8 @@ def main(argv):
     num_steps = FLAGS.num_steps
     singers = FLAGS.singers
     device = get_device() 
+    pitch_config_path = FLAGS.pitch_config_path  
+    audio_config_path = FLAGS.audio_config_path 
 
     if seq_len:
         seq_len_cache = int((1/3) * seq_len)
@@ -237,13 +224,14 @@ def main(argv):
                                                                                    model_type = pitch_model_type, 
                                                                                    prime=prime, 
                                                                                    prime_file=prime_file, 
-                                                                                   number_of_samples=number_of_samples)  
+                                                                                   number_of_samples=number_of_samples,
+                                                                                   config_path=pitch_config_path)  
 
     audio_model, audio_qt, audio_seq_len, invert_audio_fn = load_audio_fns(audio_path=audio_path, 
-                                                                           db_path_audio=db_path_audio)
+                                                                           db_path_audio=db_path_audio,
+                                                                           config_path=audio_config_path)
   
-    # 3. generate (I) pitch and (II) convert pitch to audio
-    primes = primes.to(device) if primes is not None else None
+    # 3. generate (I) pitch and (II) convert pitch to audio (generate audio conditioned on pitch)
     pitch, audio = generate(audio_model=audio_model,
                             pitch_model=pitch_model,
                             pitch_model_type=pitch_model_type,

@@ -8,6 +8,6 @@ setup(
     include_package_data=True, # Include files specified in MANIFEST.in
     description='Official Codebase for the ISMIR 2024 paper; GaMaDHaNi: Hierarchical Generative Modeling of Melodic Vocal Contours in Hindustani Classical Music',
     author='Nithya Shikarpur, Krishna Maneesha Dendukuri, Yusong Wu, Antoine Caillon, Cheng-Zhi Anna Huang',
-    author_email='your.email@example.com',
+    author_email='snnithya@gmail.com',
     url='https://github.com/snnithya/GaMaDHaNi',
 )
