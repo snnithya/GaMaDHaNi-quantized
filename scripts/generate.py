@@ -10,9 +10,6 @@ import gin
 from absl import flags, app
 import GaMaDHaNi
 from GaMaDHaNi import src, utils, scripts
-# import sys
-# Dsys.path.append("/home/mila/k/krishna-maneesha.dendukuri/GaMaDHaNi")
-# sys.path.append("/home/mila/k/krishna-maneesha.dendukuri/GaMaDHaNi/src")
 from src.protobuf.data_example import AudioExample
 from src.dataset import Task
 from utils.generate_utils import load_pitch_model, load_audio_model

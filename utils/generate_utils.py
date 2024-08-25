@@ -11,9 +11,10 @@ import torch
 import numpy as np
 
 
-def load_pitch_model(config, ckpt, qt = None, prime_file=None, dataset_split_file=None, model_type = None, number_of_samples=None):
+def load_pitch_model(config, ckpt, qt = None, prime_file=None, model_type = None, number_of_samples=None):
     gin.parse_config_file(config)
-    assert model_type is not None, 'model_type argument is not passed for the pitch generator model, choose either diffusion or transformer'
+    if model_type is None:
+        raise ValueError('model_type argument is not passed for the pitch generator model, choose either diffusion or transformer')
     if model_type=="diffusion":
         model = UNet()
     elif model_type=="transformer":
