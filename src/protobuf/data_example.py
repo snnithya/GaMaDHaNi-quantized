@@ -4,7 +4,7 @@ import numpy as np
 import torch
 import pdb
 
-from protobuf.data_pb2 import DataVal as DataPB
+from GaMaDHaNi.src.protobuf.data_pb2 import DataVal as DataPB
 
 DTYPE_TO_PRECISION = {
     np.int16: DataPB.Precision.INT16,

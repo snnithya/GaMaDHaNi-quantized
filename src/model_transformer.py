@@ -13,7 +13,6 @@ import torch.nn.functional as F
 
 #CHANGE THIS - should not need to add path
 import sys
-sys.path.append('/home/mila/k/krishna-maneesha.dendukuri/x-transformers')
 from x_transformers.x_transformers import TransformerWrapper, Decoder, AutoregressiveWrapper
 from x_transformers.autoregressive_wrapper import top_p, top_k, eval_decorator
 import pdb

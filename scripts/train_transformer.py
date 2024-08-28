@@ -7,14 +7,10 @@ import pytorch_lightning as pl
 import torch
 from absl import app, flags
 from torch.utils import data
-
-import sys
-sys.path.append("/home/mila/k/krishna-maneesha.dendukuri/GaMaDHaNi")
-sys.path.append("/home/mila/k/krishna-maneesha.dendukuri/GaMaDHaNi/src")
-from src.protobuf.data_example import AudioExample
-from src.dataset import SequenceDataset
+import GaMaDHaNi
+from GaMaDHaNi.src.protobuf.data_example import AudioExample
+from GaMaDHaNi.src.dataset import SequenceDataset
 from pytorch_lightning.plugins.environments import SLURMEnvironment
-# from msprior.xtransformers_alibi import XTransformerPrior
 
 import wandb
 import time
