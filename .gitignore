@@ -1,6 +1,3 @@
 src/__pycache__/
-error.txt
-unet.ckpt
 .ipynb_checkpoints/
-user_tests/
 protobuf/__pycache__/

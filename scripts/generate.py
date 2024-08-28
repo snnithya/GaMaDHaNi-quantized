@@ -44,7 +44,7 @@ def load_pitch_fns(pitch_path, model_type, prime=False, prime_file=None, number_
         qt_path = None
 
     seq_len = gin.query_parameter("%SEQ_LEN")
-    time_downsample = gin.query_parameter('dataset.Task.kwargs').get("time_downsample")
+    time_downsample = gin.query_parameter('src.dataset.Task.kwargs').get("time_downsample")
     seq_len_cache = int((1/3) * seq_len)
     
     pitch_model, pitch_qt, primes = load_pitch_model(

@@ -32,7 +32,7 @@ model_diffusion.UNetBase.configure_optimizers.scheduler_cls = \
 
 # Parameters for dataset.Task:
 # ==============================================================================
-dataset.Task.kwargs = {
+src.dataset.Task.kwargs = {
                         "decoder_key" : 'pitch',
                         "max_clip" : 600,
                         "min_clip" : 200,
@@ -48,12 +48,12 @@ dataset.Task.kwargs = {
 
 # Parameters for train/dataset.Task:
 # ==============================================================================
-dataset.Task.read_fn = @task_functions.pitch_read_downsample_diff
-dataset.Task.invert_fn = @task_functions.invert_pitch_read_downsample_diff
+src.dataset.Task.read_fn = @task_functions.pitch_read_downsample_diff
+src.dataset.Task.invert_fn = @task_functions.invert_pitch_read_downsample_diff
 
 # Parameters for train/dataset.SequenceDataset:
 # ==============================================================================
-dataset.SequenceDataset.task = @dataset.Task()
+src.dataset.SequenceDataset.task = @dataset.Task()
 
 # Parameters for val/dataset.SequenceDataset:
 # ==============================================================================
