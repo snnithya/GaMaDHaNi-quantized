@@ -31,7 +31,7 @@ flags.DEFINE_list('singers', default=[3], help='Used by the pitch to audio model
 flags.DEFINE_string('pitch_config_path', default=None, help='config file path for the pitch generation model')
 flags.DEFINE_string('audio_config_path', default=None, help='config file path for the pitch to audio generation model')
 
-def load_pitch_fns(pitch_path, model_type, prime=False, prime_file=None, number_of_samples=16, config_path=None):
+def load_pitch_fns(pitch_path: str, model_type: str, prime: bool = False, prime_file: Optional[str] = None, number_of_samples: int = 16, config_path: Optional[str] = None) -> Tuple[Any, Optional[Any], Callable, Callable, Optional[torch.Tensor]]:
     config_path = os.path.join(pitch_path, 'config.gin') if not config_path else config_path
 
     if prime:

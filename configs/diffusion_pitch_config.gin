@@ -1,4 +1,5 @@
 from __gin__ import dynamic_registration
+import src
 from src import dataset
 from src import model_diffusion
 from src import task_functions
