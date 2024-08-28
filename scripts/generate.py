@@ -11,7 +11,7 @@ from GaMaDHaNi.utils.utils import get_device, plot, save_figure, save_csv, save_
 from absl import app
 import torch.nn.functional as F
 import logging
-from typing import Optional, Callable, Tuple
+from typing import Optional, Callable, Tuple, Any
 
 
 FLAGS = flags.FLAGS
