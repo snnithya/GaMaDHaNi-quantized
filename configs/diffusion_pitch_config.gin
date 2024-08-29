@@ -49,12 +49,12 @@ src.dataset.Task.kwargs = {
 
 # Parameters for train/dataset.Task:
 # ==============================================================================
-src.dataset.Task.read_fn = @task_functions.pitch_read_downsample_diff
-src.dataset.Task.invert_fn = @task_functions.invert_pitch_read_downsample_diff
+src.dataset.Task.read_fn = @src.task_functions.pitch_read_downsample_diff
+src.dataset.Task.invert_fn = @src.task_functions.invert_pitch_read_downsample_diff
 
 # Parameters for train/dataset.SequenceDataset:
 # ==============================================================================
-src.dataset.SequenceDataset.task = @dataset.Task()
+src.dataset.SequenceDataset.task = @src.dataset.Task()
 
 # Parameters for val/dataset.SequenceDataset:
 # ==============================================================================
