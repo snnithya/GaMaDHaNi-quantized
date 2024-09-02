@@ -106,6 +106,7 @@ def pitch_read_downsample_diff(
     norm_f0[~np.isnan(norm_f0)] = norm_f0[~np.isnan(norm_f0)] - (min_norm_pitch)
 
     norm_f0[~np.isnan(norm_f0)] = norm_f0[~np.isnan(norm_f0)] // pitch_downsample + 1 # reserve 0 for silence
+    
     # data augmentation
     if transpose_pitch:
         transpose_amt = randint(-transpose_pitch, transpose_pitch)  # in cents

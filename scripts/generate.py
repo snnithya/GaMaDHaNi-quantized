@@ -13,7 +13,6 @@ import torch.nn.functional as F
 import logging
 from typing import Optional, Callable, Tuple, Any
 
-
 FLAGS = flags.FLAGS
 
 flags.DEFINE_string('pitch_run', default=None, required=True, help='Path to the pitch generation model folder')
@@ -32,30 +31,25 @@ flags.DEFINE_list('singers', default=[3], help='Used by the pitch to audio model
 flags.DEFINE_string('pitch_config_path', default=None, help='config file path for the pitch generation model')
 flags.DEFINE_string('audio_config_path', default=None, help='config file path for the pitch to audio generation model')
 
-def load_pitch_fns(pitch_path: str, model_type: str, prime: bool = False, prime_file: Optional[str] = None, number_of_samples: int = 16, config_path: Optional[str] = None) -> Tuple[Any, Optional[Any], Callable, Callable, Optional[torch.Tensor]]:
+def load_pitch_fns(pitch_path: str, model_type: str, prime: bool = False, prime_file: Optional[str] = None, qt_path: Optional[str] = None, number_of_samples: int = 16, config_path: Optional[str] = None) -> Tuple[Any, Optional[Any], Callable, Callable, Optional[torch.Tensor]]:
     config_path = os.path.join(pitch_path, 'config.gin') if not config_path else config_path
-
-    if prime:
-        assert prime_file, \
-            "Error: If 'prime' is True, either 'prime_file' must be provided."
+    ckpt = os.path.join(pitch_path, 'models', 'last.ckpt') if os.path.isdir(pitch_path) else pitch_path
+    if prime and not prime_file:
+        raise ValueError("Error: If 'prime' is True, 'prime_file' must be provided.")
     gin.parse_config_file(config_path)  
-    if model_type=="diffusion":
-        qt_path = os.path.join(pitch_path, 'qt.joblib')
-    else:
-        qt_path = None
 
     seq_len = gin.query_parameter("%SEQ_LEN")
     time_downsample = gin.query_parameter('src.dataset.Task.kwargs').get("time_downsample")
     seq_len_cache = int((1/3) * seq_len)
     
     pitch_model, pitch_qt, primes = load_pitch_model(
-        config = config_path, 
-        ckpt = os.path.join(pitch_path, 'models', 'last.ckpt'), 
-        qt = qt_path,
-        prime_file = prime_file,
-        model_type = model_type,
-        number_of_samples=number_of_samples
-        )
+                                            config = config_path, 
+                                            ckpt = ckpt, 
+                                            qt = qt_path,
+                                            prime_file = prime_file,
+                                            model_type = model_type,
+                                            number_of_samples=number_of_samples
+                                            )
     
     if not prime:
         #unprimed generation
@@ -65,9 +59,10 @@ def load_pitch_fns(pitch_path: str, model_type: str, prime: bool = False, prime_
         else:
             primes = None
 
-    task_obj = Task()
-    pitch_task_fn = partial(task_obj.read_) # , qt_transform = pitch_qt, add_noise_to_silence = True)
-    invert_pitch_task_fn = partial(task_obj.invert_) #, qt_transform = pitch_qt)
+    Task_ = gin.get_configurable('src.dataset.Task')
+    task_obj = Task_()
+    pitch_task_fn = partial(task_obj.read_) 
+    invert_pitch_task_fn = partial(task_obj.invert_) 
     processed_primes = None
     if prime:
         if model_type=="diffusion":
@@ -88,10 +83,10 @@ def load_pitch_fns(pitch_path: str, model_type: str, prime: bool = False, prime_
             primes = None
     return pitch_model, pitch_qt, pitch_task_fn, invert_pitch_task_fn, primes
 
-def load_audio_fns(audio_path, db_path_audio, config_path=None):
-    ckpt = os.path.join(audio_path, 'models', 'last.ckpt')
-    config = os.path.join(audio_path, 'config.gin') if not config_path else config_path
-    qt = os.path.join(db_path_audio, 'qt.joblib')
+def load_audio_fns(audio_path, qt_path: Optional[str] = None, config_path=None):
+    ckpt = os.path.join(audio_path, 'models', 'last.ckpt') if os.path.isdir(audio_path) else audio_path
+    config = config_path if config_path else os.path.join(audio_path, 'config.gin')
+    qt = os.path.join(qt_path, 'qt.joblib') if os.path.isdir(qt_path) else qt_path
 
     audio_model, audio_qt = load_audio_model(config, ckpt, qt)
     audio_seq_len = gin.query_parameter('%AUDIO_SEQ_LEN')
@@ -99,7 +94,7 @@ def load_audio_fns(audio_path, db_path_audio, config_path=None):
     invert_audio_fn = partial(
         p2a.normalized_mels_to_audio,
         qt=audio_qt,
-        n_iter=200
+        n_iter=200,
     )
 
     return audio_model, audio_qt, audio_seq_len, invert_audio_fn

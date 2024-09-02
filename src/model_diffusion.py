@@ -466,7 +466,7 @@ class UNet(UNetBase):
         # CREATE INITIAL NOISE
         if prime is not None:
             prime = prime.to(self.device)
-        noise = torch.normal(mean=0, std=1, size=(batch_size, 1, self.seq_len)).to(self.device)
+        noise = torch.normal(mean=0.0, std=1.0, size=(batch_size, 1, self.seq_len)).to(self.device)
         x_alpha_t = noise.clone()
         t_array = torch.ones((batch_size,)).to(self.device)
         # x_alpha_ts = {}
