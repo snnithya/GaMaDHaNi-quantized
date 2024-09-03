@@ -1,11 +1,8 @@
-from src.dataset import Task
-from src.model_diffusion import UNet, UNetPitchConditioned
-from src.model_transformer import XTransformerPrior
+from GaMaDHaNi.src.model_diffusion import UNet, UNetPitchConditioned
+from GaMaDHaNi.src.model_transformer import XTransformerPrior
 
-from functools import partial
 import joblib
 import gin
-import json
 
 import torch
 import numpy as np

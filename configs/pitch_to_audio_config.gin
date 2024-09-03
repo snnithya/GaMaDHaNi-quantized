@@ -1,8 +1,9 @@
 from __gin__ import dynamic_registration
-from src import dataset
-from src import model_diffusion
-from utils import pitch_to_audio_utils
-from utils import utils
+from GaMaDHaNi import src
+from GaMaDHaNi.src import dataset
+from GaMaDHaNi.src import model_diffusion
+from GaMaDHaNi.utils import pitch_to_audio_utils
+from GaMaDHaNi.utils import utils
 import torch
 
 # Macros:

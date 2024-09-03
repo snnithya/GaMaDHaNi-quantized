@@ -1,8 +1,8 @@
 from __gin__ import dynamic_registration
-import src
-from src import dataset
-from src import model_diffusion
-from src import task_functions
+from GaMaDHaNi import src
+from GaMaDHaNi.src import dataset
+from GaMaDHaNi.src import model_diffusion
+from GaMaDHaNi.src import task_functions
 from utils import utils
 import torch
 

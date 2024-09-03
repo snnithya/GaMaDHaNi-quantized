@@ -4,7 +4,8 @@ import os
 from functools import partial
 import gin
 from absl import flags, app
-from GaMaDHaNi.src.dataset import Task
+import sys
+sys.path.append("..")
 from GaMaDHaNi.utils.generate_utils import load_pitch_model, load_audio_model
 import GaMaDHaNi.utils.pitch_to_audio_utils as p2a
 from GaMaDHaNi.utils.utils import get_device, plot, save_figure, save_csv, save_audio
@@ -17,9 +18,8 @@ FLAGS = flags.FLAGS
 
 flags.DEFINE_string('pitch_run', default=None, required=True, help='Path to the pitch generation model folder')
 flags.DEFINE_string('audio_run', default=None, required=True, help='Path to the pitch to audio generation model folder')
-flags.DEFINE_string('db_path_audio', default=None, required=True, help='Path to the audio DB')
-flags.DEFINE_bool('prime', default=False, help='Boolean value indicating whether to perform Primed Generation')
-flags.DEFINE_string('pitch_model_type', default=None, help='Whether to use ')
+flags.DEFINE_bool('prime', default=False, help='Boolean value indicating whether to perform Primed pitch generation')
+flags.DEFINE_string('pitch_model_type', default=None, help='Whether to use diffusion or transformer model for pitch generation')
 flags.DEFINE_string('prime_file', default=None, help='numpy file containing the primes')
 flags.DEFINE_string('dataset_split_file', default=None, help='JSON file containing the dataset split of files used in train and validation sets respectively')
 flags.DEFINE_integer('number_of_samples', default=16, help='number of samples to generate')
@@ -30,10 +30,14 @@ flags.DEFINE_integer('num_steps', default=100, help='Used when pitch_model_type=
 flags.DEFINE_list('singers', default=[3], help='Used by the pitch to audio model, singer IDs for the singer conditioning')
 flags.DEFINE_string('pitch_config_path', default=None, help='config file path for the pitch generation model')
 flags.DEFINE_string('audio_config_path', default=None, help='config file path for the pitch to audio generation model')
+flags.DEFINE_string('qt_pitch_path', default=None, help='Path to the QuantileTransform file for pitch generation diffusion model')
+flags.DEFINE_string('qt_audio_path', default=None, required=True, help='Path to the QuantileTransform file for pitch to audio diffusion model')
+
 
 def load_pitch_fns(pitch_path: str, model_type: str, prime: bool = False, prime_file: Optional[str] = None, qt_path: Optional[str] = None, number_of_samples: int = 16, config_path: Optional[str] = None) -> Tuple[Any, Optional[Any], Callable, Callable, Optional[torch.Tensor]]:
     config_path = os.path.join(pitch_path, 'config.gin') if not config_path else config_path
     ckpt = os.path.join(pitch_path, 'models', 'last.ckpt') if os.path.isdir(pitch_path) else pitch_path
+    
     if prime and not prime_file:
         raise ValueError("Error: If 'prime' is True, 'prime_file' must be provided.")
     gin.parse_config_file(config_path)  
@@ -86,7 +90,7 @@ def load_pitch_fns(pitch_path: str, model_type: str, prime: bool = False, prime_
 def load_audio_fns(audio_path, qt_path: Optional[str] = None, config_path=None):
     ckpt = os.path.join(audio_path, 'models', 'last.ckpt') if os.path.isdir(audio_path) else audio_path
     config = config_path if config_path else os.path.join(audio_path, 'config.gin')
-    qt = os.path.join(qt_path, 'qt.joblib') if os.path.isdir(qt_path) else qt_path
+    qt = qt_path if qt_path else os.path.join(audio_path, 'qt.joblib')
 
     audio_model, audio_qt = load_audio_model(config, ckpt, qt)
     audio_seq_len = gin.query_parameter('%AUDIO_SEQ_LEN')
@@ -182,7 +186,8 @@ def generate(audio_model=None,
 def main(argv):
     pitch_path = FLAGS.pitch_run
     audio_path = FLAGS.audio_run
-    db_path_audio = FLAGS.db_path_audio
+    qt_pitch_path = FLAGS.qt_pitch_path
+    qt_audio_path = FLAGS.qt_audio_path
     prime = FLAGS.prime
     pitch_model_type = FLAGS.pitch_model_type
     prime_file = FLAGS.prime_file
@@ -196,6 +201,37 @@ def main(argv):
     pitch_config_path = FLAGS.pitch_config_path  
     audio_config_path = FLAGS.audio_config_path 
 
+    if not pitch_path:
+        raise ValueError("Missing or invalid pitch_path flag")
+
+    if not isinstance(prime, bool):
+        raise ValueError("Invalid prime flag")
+    
+    if not pitch_model_type:
+        raise ValueError("Missing pitch_model_type flag")
+    
+    if prime and not prime_file:
+        raise ValueError("Missing prime_file flag when prime is True")
+    
+    if not isinstance(number_of_samples, int) or number_of_samples <= 0:
+        raise ValueError("Invalid number_of_samples flag")
+    
+    if not outfolder:
+        raise ValueError("Missing outfolder flag")
+    
+    if not isinstance(seq_len, int) or seq_len <= 0:
+        raise ValueError("Invalid seq_len flag")
+    
+    if not isinstance(temperature, (int, float)):
+        raise ValueError("Invalid temperature flag")
+    
+    if not isinstance(num_steps, int) or num_steps <= 0:
+        raise ValueError("Invalid num_steps flag")
+    
+    if not isinstance(singers, list) or not singers:
+        raise ValueError("Invalid singers flag")
+    
+
     if seq_len:
         seq_len_cache = int((1/3) * seq_len)
         seq_len_gen = int((2/3) * seq_len)
@@ -205,11 +241,12 @@ def main(argv):
                                                                                    model_type = pitch_model_type, 
                                                                                    prime=prime, 
                                                                                    prime_file=prime_file, 
+                                                                                   qt_path = qt_pitch_path,
                                                                                    number_of_samples=number_of_samples,
                                                                                    config_path=pitch_config_path)  
 
     audio_model, audio_qt, audio_seq_len, invert_audio_fn = load_audio_fns(audio_path=audio_path, 
-                                                                           db_path_audio=db_path_audio,
+                                                                           qt_path=qt_audio_path,
                                                                            config_path=audio_config_path)
   
     # 3. generate (I) pitch and (II) convert pitch to audio (generate audio conditioned on pitch)
