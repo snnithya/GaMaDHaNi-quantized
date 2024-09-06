@@ -31,6 +31,7 @@ python scripts/generate.py --pitch_model_type=diffusion --prime=True --number_of
 Note: Currently the only pitch_model_type allowed is "diffusion", "transformer" model is soon to be released.
 
 ## BibTex
+```
 @misc{shikarpur2024hierarchicalgenerativemodelingmelodic,
       title={Hierarchical Generative Modeling of Melodic Vocal Contours in Hindustani Classical Music}, 
       author={Nithya Shikarpur and Krishna Maneesha Dendukuri and Yusong Wu and Antoine Caillon and Cheng-Zhi Anna Huang},
@@ -40,3 +41,4 @@ Note: Currently the only pitch_model_type allowed is "diffusion", "transformer" 
       primaryClass={cs.SD},
       url={https://arxiv.org/abs/2408.12658}, 
 }
+```
