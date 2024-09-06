@@ -6,7 +6,6 @@ import torch.nn.functional as F
 import math
 from typing import Optional, Union
 import numpy as np
-import wandb
 import matplotlib.pyplot as plt
 import gin
 import os
@@ -16,8 +15,6 @@ import torchaudio
 from typing import Callable
 from pytorch_lightning.utilities import grad_norm
 
-import sys
-# sys.path.append('..')
 from GaMaDHaNi.utils.utils import prob_mask_like
 from x_transformers.x_transformers import AttentionLayers
 import pdb
@@ -1071,10 +1068,26 @@ class UNetPitchConditioned(UNetBase):
             # SAMPLE FROM MODEL
             for t in np.linspace(0, 1, num_steps + 1)[:-1]:
                 t_tensor = torch.tensor(t)
+                # debugging code (to remove soon)
+                # if torch.isnan(padded_noise).any():
+                #     print('Beginning NAN')
+                #     pdb.set_trace()
+                # else:
+                #     print(padded_noise)
+                #     print('nan in padded_noise: ', torch.isnan(padded_noise).any())
+                #     print('nan in padded_f0: ', torch.isnan(padded_f0).any())
+                #     print('nan in singer: ', torch.isnan(singer).any())
+                #     try:
+                #         print('nan in unconditional_logits: ', torch.isnan(unconditioned_logits).any())
+                #         print('nan in conditioned_logits: ', torch.isnan(conditioned_logits).any())
+                #     except:
+                #         pass
+                    
                 unconditioned_logits = self.forward(padded_noise, t_tensor * t_array, padded_f0, singer, drop_tokens=False, drop_all=True)
                 conditioned_logits = self.forward(padded_noise, t_tensor * t_array, padded_f0, singer, drop_tokens=False, drop_all=False)
                 total_logits = strength * conditioned_logits + (1 - strength) * unconditioned_logits
                 padded_noise = padded_noise + 1 / num_steps * total_logits
+                
             
             noise = self.unpad(padded_noise, padding)
         return noise, f0, singer

@@ -13,6 +13,7 @@ from absl import app
 import torch.nn.functional as F
 import logging
 from typing import Optional, Callable, Tuple, Any
+import pdb
 
 FLAGS = flags.FLAGS
 
@@ -126,9 +127,10 @@ def generate_pitch(pitch_model,
         for i, pitch in enumerate(inverted_pitches):
             fig = plot(f0_array=pitch, time_array=np.arange(0, len(pitch) / pitch_sample_rate, 1/pitch_sample_rate), prime=prime)
             save_figure(fig, dest_path=f"{outfolder}/pitch/{i}.png")
-    return samples, inverted_pitches
+    return samples, torch.Tensor(np.array(inverted_pitches)).to(pitch_model.device)
 
 def generate_audio(audio_model, f0s, invert_audio_fn, outfolder, singers=[3], num_steps=100):
+    # pdb.set_trace()
     singer_tensor = torch.tensor(np.repeat(singers, repeats=f0s.shape[0])).to(audio_model.device)
     samples, _, singers = audio_model.sample_cfg(f0s.shape[0], f0=f0s, num_steps=num_steps, singer=singer_tensor, strength=3)
     audio = invert_audio_fn(samples)
@@ -174,8 +176,13 @@ def generate(audio_model=None,
                                            processed_primes=processed_primes,
                                            pitch_sample_rate=100,
                                            prime=prime)
-    
-    pitch = pitch.unsqueeze(1) if pitch.dim()==2 else pitch
+    def undo_qt(x, min_clip=200):
+        pitch= pitch_qt.inverse_transform(x.reshape(-1, 1)).reshape(1, -1)
+        pitch = np.around(pitch) # round to nearest integer, done in preprocessing of pitch contour fed into model
+        pitch[pitch < 200] = np.nan
+        return pitch
+    pitch = torch.tensor(undo_qt(pitch.detach().cpu().numpy())).to(device)
+    pitch = pitch.unsqueeze(1)
     interpolated_pitch = p2a.interpolate_pitch(pitch=pitch, audio_seq_len=audio_seq_len)
     interpolated_pitch = torch.nan_to_num(interpolated_pitch, nan=196)
     interpolated_pitch = interpolated_pitch.squeeze(1).float() # to match input size by removing the extra dimension
@@ -263,7 +270,8 @@ def main(argv):
                             temperature=temperature,
                             prime=prime,
                             processed_primes=primes,
-                            device=device)
+                            device=device,
+                            pitch_qt=pitch_qt)
 
 
 

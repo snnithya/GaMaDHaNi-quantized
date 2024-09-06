@@ -1,3 +1,7 @@
 src/__pycache__/
 .ipynb_checkpoints/
 protobuf/__pycache__/
+__pycache__/
+generations
+misc
+listening_study_primes.npz
