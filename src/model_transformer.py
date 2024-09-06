@@ -1,10 +1,9 @@
 import logging
-import math
 from typing import Callable, Dict, Optional, Sequence, Tuple
 import gin
 from tqdm import tqdm
 
-from einops import rearrange, pack, unpack
+from einops import pack, unpack
 import pytorch_lightning as pl
 import torch
 torch.cuda.empty_cache()

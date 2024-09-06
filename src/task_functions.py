@@ -5,8 +5,6 @@ import gin
 import numpy as np
 import torch
 
-import pdb
-
 TensorDict = Dict[str, torch.Tensor]
 
 @gin.configurable
