@@ -15,5 +15,5 @@ torch==2.4.0
 torchaudio==2.4.0
 tqdm==4.65.0
 wandb==0.15.4
-x_transformers==1.32.15
+x_transformers==1.30.2
 huggingface_hub==0.24.5

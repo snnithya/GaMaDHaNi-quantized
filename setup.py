@@ -16,8 +16,10 @@ setup(
         "torch==2.4.0",
         "torchaudio==2.4.0",
         'tqdm==4.65.0',
-        "matplotlib==3.4.3",
-        "absl_py==1.4.0"
+        "matplotlib==3.9.2",
+        "absl_py==1.4.0",
+        "librosa==0.10.0",
+        "einops==0.8.0"
     ],       
     extras_require={
         'training': [
