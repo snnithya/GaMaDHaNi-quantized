@@ -5,7 +5,7 @@ setup(
     version='0.1',
     packages=find_packages(),  
     install_requires=[
-        "x_transformers==1.32.15",
+        "x_transformers==1.30.2",
         "pytorch_lightning==1.9.0",
         "gin_config==0.5.0",
         "joblib==1.2.0",

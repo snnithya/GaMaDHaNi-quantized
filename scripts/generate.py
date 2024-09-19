@@ -8,22 +8,23 @@ import sys
 sys.path.append("..")
 from GaMaDHaNi.utils.generate_utils import load_pitch_model, load_audio_model
 import GaMaDHaNi.utils.pitch_to_audio_utils as p2a
-from GaMaDHaNi.utils.utils import get_device, plot, save_figure, save_csv, save_audio
+from GaMaDHaNi.utils.utils import get_device, plot, save_figure, save_csv, save_audio, download_models, download_data
 from absl import app
-import torch.nn.functional as F
 import logging
 from typing import Optional, Callable, Tuple, Any
 import pdb
 
 FLAGS = flags.FLAGS
 
-flags.DEFINE_string('pitch_run', default=None, required=True, help='Path to the pitch generation model folder')
-flags.DEFINE_string('audio_run', default=None, required=True, help='Path to the pitch to audio generation model folder')
+flags.DEFINE_string('pitch_model_type', default=None, required=True, help='Whether to use diffusion or transformer model for pitch generation')
 flags.DEFINE_bool('prime', default=False, help='Boolean value indicating whether to perform Primed pitch generation')
-flags.DEFINE_string('pitch_model_type', default=None, help='Whether to use diffusion or transformer model for pitch generation')
+flags.DEFINE_string('pitch_run', default=None, help='Path to the pitch generation model folder')
+flags.DEFINE_string('audio_run', default=None, help='Path to the pitch to audio generation model folder')
+flags.DEFINE_bool('download_model_from_hf', default=True, help='Boolean value indicating whether to download model files from Huggingface')
+flags.DEFINE_string('hf_model_repo_id', default="kmaneeshad/GaMaDHaNi", help='model repository on huggingface, to download model files from')
+flags.DEFINE_string('hf_data_repo_id', default="kmaneeshad/GaMaDHaNi-db", help='data repository on huggingface, to download data files from')
 flags.DEFINE_string('prime_file', default=None, help='numpy file containing the primes')
-flags.DEFINE_string('dataset_split_file', default=None, help='JSON file containing the dataset split of files used in train and validation sets respectively')
-flags.DEFINE_integer('number_of_samples', default=16, help='number of samples to generate')
+flags.DEFINE_integer('number_of_samples', default=1, help='number of samples to generate')
 flags.DEFINE_string('outfolder', default=os.getcwd(),help='path where the generated pitch contour plots, csv files and audio files are to be saved' )
 flags.DEFINE_integer('seq_len', default=1200, help='Used when pitch_model_type==transformer, total length of the sequence to be generated, when running primed generation, seq_len includes the prime too')
 flags.DEFINE_float('temperature', default=1.0, help='Used when pitch_model_type==transformer, controls randomness in sampling; lower values (< 1.0) produce more deterministic results, while higher values (> 1.0) increase diversity. ')
@@ -32,7 +33,7 @@ flags.DEFINE_list('singers', default=[3], help='Used by the pitch to audio model
 flags.DEFINE_string('pitch_config_path', default=None, help='config file path for the pitch generation model')
 flags.DEFINE_string('audio_config_path', default=None, help='config file path for the pitch to audio generation model')
 flags.DEFINE_string('qt_pitch_path', default=None, help='Path to the QuantileTransform file for pitch generation diffusion model')
-flags.DEFINE_string('qt_audio_path', default=None, required=True, help='Path to the QuantileTransform file for pitch to audio diffusion model')
+flags.DEFINE_string('qt_audio_path', default=None, help='Path to the QuantileTransform file for pitch to audio diffusion model')
 
 
 def load_pitch_fns(pitch_path: str, model_type: str, prime: bool = False, prime_file: Optional[str] = None, qt_path: Optional[str] = None, number_of_samples: int = 16, config_path: Optional[str] = None) -> Tuple[Any, Optional[Any], Callable, Callable, Optional[torch.Tensor]]:
@@ -126,7 +127,7 @@ def generate_pitch(pitch_model,
     if outfolder is not None:
         for i, pitch in enumerate(inverted_pitches):
             fig = plot(f0_array=pitch, time_array=np.arange(0, len(pitch) / pitch_sample_rate, 1/pitch_sample_rate), prime=prime)
-            save_figure(fig, dest_path=f"{outfolder}/pitch/{i}.png")
+            save_figure(fig, dest_path=f"{outfolder}/output/pitch/{i}.png")
     return samples, torch.Tensor(np.array(inverted_pitches)).to(pitch_model.device)
 
 def generate_audio(audio_model, f0s, invert_audio_fn, outfolder, singers=[3], num_steps=100):
@@ -139,7 +140,7 @@ def generate_audio(audio_model, f0s, invert_audio_fn, outfolder, singers=[3], nu
         os.makedirs(outfolder, exist_ok=True)
         for i, a in enumerate(audio):
             logging.log(logging.INFO, f"Saving audio {i}")
-            save_audio(audio_array=a.clone().detach().unsqueeze(0).cpu(), dest_path=f"{outfolder}/audio/{i}.wav", sample_rate=16000)
+            save_audio(audio_array=a.clone().detach().unsqueeze(0).cpu(), dest_path=f"{outfolder}/output/audio/{i}.wav", sample_rate=16000)
             # save_csv()
     return audio
 
@@ -195,6 +196,9 @@ def main(argv):
     audio_path = FLAGS.audio_run
     qt_pitch_path = FLAGS.qt_pitch_path
     qt_audio_path = FLAGS.qt_audio_path
+    download_model_from_hf = FLAGS.download_model_from_hf
+    hf_model_repo_id = FLAGS.hf_model_repo_id
+    hf_data_repo_id = FLAGS.hf_data_repo_id
     prime = FLAGS.prime
     pitch_model_type = FLAGS.pitch_model_type
     prime_file = FLAGS.prime_file
@@ -205,11 +209,8 @@ def main(argv):
     num_steps = FLAGS.num_steps
     singers = FLAGS.singers
     device = get_device() 
-    pitch_config_path = FLAGS.pitch_config_path  
-    audio_config_path = FLAGS.audio_config_path 
-
-    if not pitch_path:
-        raise ValueError("Missing or invalid pitch_path flag")
+    pitch_config_path = FLAGS.pitch_config_path if FLAGS.pitch_config_path else os.path.join(os.getcwd(), f"configs/{pitch_model_type}_pitch_config.gin")
+    audio_config_path = FLAGS.audio_config_path if FLAGS.audio_config_path else os.path.join(os.getcwd(), f"configs/pitch_to_audio_config.gin")
 
     if not isinstance(prime, bool):
         raise ValueError("Invalid prime flag")
@@ -218,13 +219,13 @@ def main(argv):
         raise ValueError("Missing pitch_model_type flag")
     
     if prime and not prime_file:
-        raise ValueError("Missing prime_file flag when prime is True")
+        if hf_data_repo_id:
+            prime_file = download_data(hf_data_repo_id)
+        else:
+            raise ValueError("Missing prime_file or hf_data_repo_id flag when prime is True")
     
     if not isinstance(number_of_samples, int) or number_of_samples <= 0:
         raise ValueError("Invalid number_of_samples flag")
-    
-    if not outfolder:
-        raise ValueError("Missing outfolder flag")
     
     if not isinstance(seq_len, int) or seq_len <= 0:
         raise ValueError("Invalid seq_len flag")
@@ -238,6 +239,8 @@ def main(argv):
     if not isinstance(singers, list) or not singers:
         raise ValueError("Invalid singers flag")
     
+    if download_model_from_hf:
+        pitch_path, qt_pitch_path, audio_path, qt_audio_path = download_models(hf_model_repo_id, pitch_model_type)
 
     if seq_len:
         seq_len_cache = int((1/3) * seq_len)
