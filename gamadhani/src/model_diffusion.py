@@ -11,8 +11,8 @@ import pandas as pd
 import torchaudio
 from typing import Callable
 
-import GaMaDHaNi.utils.pitch_to_audio_utils as p2a
-from GaMaDHaNi.utils.utils import prob_mask_like
+import gamadhani.utils.pitch_to_audio_utils as p2a
+from gamadhani.utils.utils import prob_mask_like
 from x_transformers.x_transformers import AttentionLayers
 import pdb
 

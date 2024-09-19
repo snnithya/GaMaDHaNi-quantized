@@ -27,6 +27,11 @@ setup(
             "wandb==0.15.4"
         ]
     },
+    entry_points={
+      'console_scripts': [
+        'generate' = 'gamadhani.scripts.generate:main',
+      ],
+    },
     include_package_data=True, 
     description='Official Codebase for the ISMIR 2024 paper; GaMaDHaNi: Hierarchical Generative Modeling of Melodic Vocal Contours in Hindustani Classical Music',
     author='Nithya Shikarpur, Krishna Maneesha Dendukuri, Yusong Wu, Antoine Caillon, Cheng-Zhi Anna Huang',

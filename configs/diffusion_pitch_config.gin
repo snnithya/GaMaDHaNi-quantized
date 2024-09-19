@@ -1,9 +1,9 @@
 from __gin__ import dynamic_registration
-from GaMaDHaNi import src
-from GaMaDHaNi.src import dataset
-from GaMaDHaNi.src import model_diffusion
-from GaMaDHaNi.src import task_functions
-from GaMaDHaNi.utils import utils
+from gamadhani import src
+from gamadhani.src import dataset
+from gamadhani.src import model_diffusion
+from gamadhani.src import task_functions
+from gamadhani.utils import utils
 import torch
 
 # Macros:

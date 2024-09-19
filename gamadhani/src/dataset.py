@@ -8,7 +8,7 @@ import torch
 import pdb
 import numpy as np
 from torch.utils.data import Dataset, Subset
-from GaMaDHaNi.src.protobuf.data_example import AudioExample
+from gamadhani.src.protobuf.data_example import AudioExample
 from sklearn.preprocessing import QuantileTransformer
 
 
