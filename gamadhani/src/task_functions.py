@@ -82,9 +82,10 @@ def pitch_read_downsample_diff(
     qt_transform: Optional[QuantileTransformer] = None,
     min_clip: int = 200,
     max_clip: int = 600,
-    add_noise_to_silence: bool = False
+    add_noise_to_silence: bool = False,
+     **kwargs
     ):
-    # print(min_norm_pitch, seq_len, transpose_pitch, qt_transform)
+    
     data = inputs[decoder_key]["data"]
     if seq_len is not None:
         start = randint(0, max(0, data.shape[0] - seq_len*time_downsample - 1))
@@ -136,7 +137,8 @@ def invert_pitch_read_downsample_diff(f0,
                   min_clip: int,
                   max_clip: int,
                   base_tonic: float=440., 
-                  decoder_key: str=None):
+                  decoder_key: str=None,
+                   **kwargs):
     try:
         f0 = f0.detach().cpu().numpy()
     except:

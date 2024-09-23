@@ -19,11 +19,11 @@ setup(
         "matplotlib==3.9.2",
         "absl_py==1.4.0",
         "librosa==0.10.0",
-        "einops==0.8.0"
+        "einops==0.8.0",
+        "lmdb==1.4.1",
     ],       
     extras_require={
         'training': [
-            "lmdb==1.4.1",
             "pandas==2.0.3",
             "protobuf==3.20.3",
             "wandb==0.15.4"

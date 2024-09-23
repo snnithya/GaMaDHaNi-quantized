@@ -23,17 +23,17 @@ class Task:
     kwargs in read and invert functions are to pass the dynamic entities i.e. Data
     """
     def __init__(self, read_fn: Callable[..., Any], invert_fn: Callable[..., Any], **kwargs):
-        self.read_fn = read_fn
-        self.invert_fn = invert_fn
+        self.read_fn = partial(read_fn, **kwargs)
+        self.invert_fn = partial(invert_fn, **kwargs)
         self.extra_args = kwargs["kwargs"] #because of gin file?
 
     def read_(self, **kwargs):
-        kwargs.update(self.extra_args)
-        return self.read_fn(**kwargs)
+        merged_args = {**self.extra_args, **kwargs}
+        return self.read_fn(**merged_args)
         
     def invert_(self, **kwargs):
-        kwargs.update(self.extra_args)
-        return self.invert_fn(**kwargs)
+        merged_args = {**self.extra_args, **kwargs}
+        return self.invert_fn(**merged_args)
 
 
 def ordered_dataset_split(dataset: Dataset,

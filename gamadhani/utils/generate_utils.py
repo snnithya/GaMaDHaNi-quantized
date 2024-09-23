@@ -88,7 +88,8 @@ def load_pitch_fns(pitch_path: str, model_type: str, prime: bool = False, prime_
     processed_primes = None
     if prime:
         if model_type=="diffusion":
-            pitch_task_fn = partial(pitch_task_fn, qt_transform = pitch_qt, add_noise_to_silence = True)
+            pitch_task_fn = partial(pitch_task_fn, qt_transform = pitch_qt, add_noise_to_silence = True,
+            seq_len = None)
             invert_pitch_task_fn = partial(invert_pitch_task_fn, qt_transform = pitch_qt)
         
         processed_primes = [torch.tensor(pitch_task_fn(
