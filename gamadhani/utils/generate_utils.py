@@ -12,7 +12,7 @@ from functools import partial
 import os
 
 
-def load_pitch_model(config, ckpt, qt = None, prime_file=None, model_type = None, number_of_samples=None):
+def load_pitch_model(config, ckpt, qt = None, prime_file=None, model_type = None, number_of_samples=None, device='cuda'):
     gin.parse_config_file(config)
     if model_type is None:
         raise ValueError('model_type argument is not passed for the pitch generator model, choose either diffusion or transformer')
@@ -21,10 +21,9 @@ def load_pitch_model(config, ckpt, qt = None, prime_file=None, model_type = None
     elif model_type=="transformer":
         model = XTransformerPrior()
     
-    ckpt = torch.load(ckpt, map_location="cuda", weights_only=True)
+    ckpt = torch.load(ckpt, map_location=device, weights_only=True)
     ckpt = ckpt['state_dict']
-    model.load_state_dict(ckpt, strict=False)  
-    model.to('cuda')
+    model.load_state_dict(ckpt)  
 
     # quantile transform file for the diffusion model
     if qt is not None:
@@ -40,19 +39,18 @@ def load_pitch_model(config, ckpt, qt = None, prime_file=None, model_type = None
         primes = None
     return model, qt, primes
 
-def load_audio_model(config, ckpt, qt = None):
+def load_audio_model(config, ckpt, qt = None, device='cuda'):
     gin.parse_config_file(config)
     model = UNetPitchConditioned() # there are no gin parameters for some reason
-    ckpt = torch.load(ckpt, weights_only=True)
+    ckpt = torch.load(ckpt, weights_only=True, map_location=device)
     ckpt = ckpt['state_dict']
-    model.load_state_dict(ckpt, strict=False)  
-    model.to('cuda')
+    model.load_state_dict(ckpt)  
     if qt is not None:
         qt = joblib.load(qt)
 
     return model, qt
 
-def load_pitch_fns(pitch_path: str, model_type: str, prime: bool = False, prime_file: Optional[str] = None, qt_path: Optional[str] = None, number_of_samples: int = 16, config_path: Optional[str] = None) -> Tuple[Any, Optional[Any], Callable, Callable, Optional[torch.Tensor]]:
+def load_pitch_fns(pitch_path: str, model_type: str, prime: bool = False, prime_file: Optional[str] = None, qt_path: Optional[str] = None, number_of_samples: int = 16, config_path: Optional[str] = None, device: Optional[str] = 'cuda') -> Tuple[Any, Optional[Any], Callable, Callable, Optional[torch.Tensor]]:
     config_path = os.path.join(pitch_path, 'config.gin') if not config_path else config_path
     ckpt = os.path.join(pitch_path, 'models', 'last.ckpt') if os.path.isdir(pitch_path) else pitch_path
     
@@ -70,7 +68,8 @@ def load_pitch_fns(pitch_path: str, model_type: str, prime: bool = False, prime_
                                             qt = qt_path,
                                             prime_file = prime_file,
                                             model_type = model_type,
-                                            number_of_samples=number_of_samples
+                                            number_of_samples=number_of_samples,
+                                            device=device
                                             )
     
     if not prime:
@@ -106,12 +105,12 @@ def load_pitch_fns(pitch_path: str, model_type: str, prime: bool = False, prime_
             primes = None
     return pitch_model, pitch_qt, pitch_task_fn, invert_pitch_task_fn, primes
 
-def load_audio_fns(audio_path, qt_path: Optional[str] = None, config_path=None):
+def load_audio_fns(audio_path, qt_path: Optional[str] = None, config_path=None, device='cuda'):
     ckpt = os.path.join(audio_path, 'models', 'last.ckpt') if os.path.isdir(audio_path) else audio_path
     config = config_path if config_path else os.path.join(audio_path, 'config.gin')
     qt = qt_path if qt_path else os.path.join(audio_path, 'qt.joblib')
 
-    audio_model, audio_qt = load_audio_model(config, ckpt, qt)
+    audio_model, audio_qt = load_audio_model(config, ckpt, qt, device=device)
     audio_seq_len = gin.query_parameter('%AUDIO_SEQ_LEN')
 
     invert_audio_fn = partial(
