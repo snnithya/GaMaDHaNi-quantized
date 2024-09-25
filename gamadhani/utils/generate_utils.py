@@ -21,7 +21,7 @@ def load_pitch_model(config, ckpt, qt = None, prime_file=None, model_type = None
     elif model_type=="transformer":
         model = XTransformerPrior()
     
-    ckpt = torch.load(ckpt, map_location=device, weights_only=True)
+    ckpt = torch.load(ckpt, map_location=device)
     ckpt = ckpt['state_dict']
     model.load_state_dict(ckpt)  
 
@@ -42,7 +42,7 @@ def load_pitch_model(config, ckpt, qt = None, prime_file=None, model_type = None
 def load_audio_model(config, ckpt, qt = None, device='cuda'):
     gin.parse_config_file(config)
     model = UNetPitchConditioned() # there are no gin parameters for some reason
-    ckpt = torch.load(ckpt, weights_only=True, map_location=device)
+    ckpt = torch.load(ckpt, map_location=device)
     ckpt = ckpt['state_dict']
     model.load_state_dict(ckpt)  
     if qt is not None:
