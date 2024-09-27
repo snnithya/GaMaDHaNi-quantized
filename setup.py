@@ -11,7 +11,7 @@ setup(
         "joblib==1.2.0",
         "numpy==1.24.4",
         "pytorch_lightning==1.9.0",
-        "scikit_learn==1.2.0",
+        "scikit_learn==1.2.2",
         "setuptools==67.8.0",
         "torch==2.4.0",
         "torchaudio==2.4.0",
