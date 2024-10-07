@@ -17,9 +17,9 @@ def load_pitch_model(config, ckpt, qt = None, prime_file=None, model_type = None
     if model_type is None:
         raise ValueError('model_type argument is not passed for the pitch generator model, choose either diffusion or transformer')
     if model_type=="diffusion":
-        model = UNet()
+        model = UNet().to(device)
     elif model_type=="transformer":
-        model = XTransformerPrior()
+        model = XTransformerPrior().to(device)
     
     ckpt = torch.load(ckpt, map_location=device)
     ckpt = ckpt['state_dict']
@@ -41,7 +41,7 @@ def load_pitch_model(config, ckpt, qt = None, prime_file=None, model_type = None
 
 def load_audio_model(config, ckpt, qt = None, device='cuda'):
     gin.parse_config_file(config)
-    model = UNetPitchConditioned() # there are no gin parameters for some reason
+    model = UNetPitchConditioned().to(device) # there are no gin parameters for some reason
     ckpt = torch.load(ckpt, map_location=device)
     ckpt = ckpt['state_dict']
     model.load_state_dict(ckpt)  

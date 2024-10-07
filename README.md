@@ -1,12 +1,11 @@
-# :musical_note: GaMaDHaNi: Hierarchical Generative Modeling of Melodic Vocal Contours in Hindustani Classical Music
-GaMaDHaNi is a modular two-level hierarchy, consisting of a generative model on pitch contours, and a pitch contour to audio synthesis model.\
-Using pitch contours as an intermediate representation, we show that our model may be better equipped to listen and respond to musicians in a human-AI collaborative setting by highlighting two potential interaction use cases (1) primed generation (as shown in the diagram below), and (2) coarse pitch conditioning.\
+# 🎤 GaMaDHaNi: Hierarchical Generative Modeling of Melodic Vocal Contours in Hindustani Classical Music
+GaMaDHaNi is a modular two-level hierarchy, consisting of a generative model on pitch contours, and a pitch contour to audio synthesis model.
 
-![GaMaDHaNi](https://github.com/snnithya/GaMaDHaNi/blob/62dd9dcae4be29ba4c23107d22b38aa257a3eaba/GaMaDHaNi.jpg)
+![GaMaDHaNi](GaMaDHaNi.jpg)
 
-Read our ISMIR 2024 Paper [here](https://arxiv.org/abs/2408.12658) and 
-Check out the audio samples [here](https://snnithya.github.io/gamadhani-samples/)\
-Or Play with the demo here
+:book: Read our ISMIR 2024 Paper [here](https://arxiv.org/abs/2408.12658)\
+:headphones: Check out the audio samples [here](https://snnithya.github.io/gamadhani-samples/)\
+:computer: Play with the interactive demo [here] 
 ## Installation
 
    ```bash

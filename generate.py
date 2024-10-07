@@ -62,7 +62,7 @@ def generate_pitch(pitch_model,
 def generate_audio(audio_model, f0s, invert_audio_fn, outfolder, singers=[3], num_steps=100):
     # pdb.set_trace()
     singer_tensor = torch.tensor(np.repeat(singers, repeats=f0s.shape[0])).to(audio_model.device)
-    samples, _, singers = audio_model.sample_cfg(f0s.shape[0], f0=f0s, num_steps=num_steps, singer=singer_tensor, strength=3)
+    samples, _, singers = audio_model.sample_cfg(f0s.shape[0], f0=f0s, num_steps=num_steps, singer=singer_tensor, strength=3, invert_audio_fn=invert_audio_fn)
     audio = invert_audio_fn(samples)
     
     if outfolder is not None:
