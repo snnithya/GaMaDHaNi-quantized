@@ -23,7 +23,6 @@ flags.DEFINE_string('audio_run', default=None, help='Path to the pitch to audio 
 flags.DEFINE_bool('download_model_from_hf', default=True, help='Boolean value indicating whether to download model files from Huggingface')
 flags.DEFINE_string('hf_model_repo_id', default="kmaneeshad/GaMaDHaNi", help='model repository on huggingface, to download model files from')
 flags.DEFINE_string('hf_data_repo_id', default="kmaneeshad/GaMaDHaNi-db", help='data repository on huggingface, to download data files from')
-flags.DEFINE_string('prime_file', default=None, help='numpy file containing the primes')
 flags.DEFINE_integer('number_of_samples', default=1, help='number of samples to generate')
 flags.DEFINE_string('outfolder', default=os.getcwd(),help='path where the generated pitch contour plots, csv files and audio files are to be saved' )
 flags.DEFINE_integer('seq_len', default=1200, help='Used when pitch_model_type==transformer, total length of the sequence to be generated, when running primed generation, seq_len includes the prime too')
@@ -46,6 +45,8 @@ def generate_pitch(pitch_model,
                    processed_primes=None,
                    pitch_sample_rate=200,
                    prime=False):
+    if processed_primes is not None:
+        processed_primes = torch.tensor(processed_primes).to(pitch_model.device)
     if pitch_model_type=="diffusion":
         samples = pitch_model.sample_fn(batch_size=num_samples, num_steps=num_steps, prime=processed_primes) # keep only 4s
     else:
@@ -60,7 +61,6 @@ def generate_pitch(pitch_model,
     return samples, torch.Tensor(np.array(inverted_pitches)).to(pitch_model.device)
 
 def generate_audio(audio_model, f0s, invert_audio_fn, outfolder, singers=[3], num_steps=100):
-    # pdb.set_trace()
     singer_tensor = torch.tensor(np.repeat(singers, repeats=f0s.shape[0])).to(audio_model.device)
     samples, _, singers = audio_model.sample_cfg(f0s.shape[0], f0=f0s, num_steps=num_steps, singer=singer_tensor, strength=3, invert_audio_fn=invert_audio_fn)
     audio = invert_audio_fn(samples)
@@ -93,8 +93,7 @@ def generate(audio_model=None,
     
     logging.log(logging.INFO, 'Generate function')
 
-    pitch_model = pitch_model.to(device) 
-    processed_primes = processed_primes.to(device) if prime else None
+    pitch_model = pitch_model.to(device)
 
     pitch, inverted_pitch = generate_pitch(pitch_model=pitch_model,
                                            pitch_model_type=pitch_model_type,
@@ -107,18 +106,22 @@ def generate(audio_model=None,
                                            processed_primes=processed_primes,
                                            pitch_sample_rate=100,
                                            prime=prime)
-    def undo_qt(x, min_clip=200):
-        pitch= pitch_qt.inverse_transform(x.reshape(-1, 1)).reshape(1, -1)
-        pitch = np.around(pitch) # round to nearest integer, done in preprocessing of pitch contour fed into model
-        pitch[pitch < 200] = np.nan
-        return pitch
-    pitch = torch.tensor(undo_qt(pitch.detach().cpu().numpy())).to(device)
-    pitch = pitch.unsqueeze(1)
-    interpolated_pitch = p2a.interpolate_pitch(pitch=pitch, audio_seq_len=audio_seq_len)
-    interpolated_pitch = torch.nan_to_num(interpolated_pitch, nan=196)
-    interpolated_pitch = interpolated_pitch.squeeze(1).float() # to match input size by removing the extra dimension
+    if pitch_qt is not None:
+        # if there is not pitch quantile transformer, undo the default quantile transformation that occurs
+        pitch_qt = p2a.GPUQuantileTransformer(pitch_qt, device)
+        def undo_qt(x, min_clip=200):
+            pitch= pitch_qt.inverse_transform(x)
+            pitch = torch.round(pitch) # round to nearest integer, done in preprocessing of pitch contour fed into model
+            pitch[pitch < 200] = np.nan
+            return pitch
+        pitch = undo_qt(pitch)
+
+    interpolated_pitch = p2a.interpolate_pitch(pitch=pitch, audio_seq_len=audio_seq_len)    # interpolate pitch values to match the audio model's input size
+    interpolated_pitch = torch.nan_to_num(interpolated_pitch, nan=196)  # replace nan values with silent token
+    interpolated_pitch = interpolated_pitch.squeeze(1) # to match input size by removing the extra dimension
+   
     audio_model = audio_model.to(device)
-    audio = generate_audio(audio_model, interpolated_pitch, invert_audio_fn, singers=singers, num_steps=100, outfolder=outfolder)[:, :16000*4]
+    audio = generate_audio(audio_model, interpolated_pitch, invert_audio_fn, singers=singers, num_steps=100, outfolder=outfolder)
     return pitch, audio
     
 def main(argv):
@@ -130,8 +133,8 @@ def main(argv):
     hf_model_repo_id = FLAGS.hf_model_repo_id
     hf_data_repo_id = FLAGS.hf_data_repo_id
     prime = FLAGS.prime
+    prime_file = None   # assume no prime file
     pitch_model_type = FLAGS.pitch_model_type
-    prime_file = FLAGS.prime_file
     number_of_samples = FLAGS.number_of_samples
     outfolder = FLAGS.outfolder
     seq_len = FLAGS.seq_len
@@ -148,11 +151,13 @@ def main(argv):
     if not pitch_model_type:
         raise ValueError("Missing pitch_model_type flag")
     
-    if prime and not prime_file:
+    if prime:
         if hf_data_repo_id:
             prime_file = download_data(hf_data_repo_id)
         else:
-            raise ValueError("Missing prime_file or hf_data_repo_id flag when prime is True")
+            raise ValueError("Need to provide hf_data_repo_id when prime is True")
+        assert number_of_samples <= 16, "Number of samples should be less than or equal to 16 when prime is True"
+
     
     if not isinstance(number_of_samples, int) or number_of_samples <= 0:
         raise ValueError("Invalid number_of_samples flag")
