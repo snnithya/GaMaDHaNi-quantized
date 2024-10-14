@@ -10,6 +10,7 @@ import numpy as np
 from typing import Optional, Callable, Tuple, Any
 from functools import partial
 import os
+import pdb
 
 
 def load_pitch_model(config, ckpt, qt = None, prime_file=None, model_type = None, number_of_samples=None, device='cuda'):
@@ -34,6 +35,7 @@ def load_pitch_model(config, ckpt, qt = None, prime_file=None, model_type = None
         primes = np.load(prime_file, allow_pickle=True)['concatenated_array'][:, 0]
         if number_of_samples < len(primes):
             primes = primes[:number_of_samples]
+        primes = np.array([np.array(p) for p in primes]) # convert primes to a n-D numpy array
     # unprimed generation 
     else:
         primes = None
@@ -71,7 +73,7 @@ def load_pitch_fns(pitch_path: str, model_type: str, prime: bool = False, prime_
                                             number_of_samples=number_of_samples,
                                             device=device
                                             )
-    
+    # processing the primes
     if not prime:
         #unprimed generation
         if model_type=="transformer":
@@ -92,14 +94,16 @@ def load_pitch_fns(pitch_path: str, model_type: str, prime: bool = False, prime_
             invert_pitch_task_fn = partial(invert_pitch_task_fn, qt_transform = pitch_qt)
         
         processed_primes = [torch.tensor(pitch_task_fn(
-                    **{"inputs": {"pitch": {"data": torch.tensor(p[:seq_len_cache*time_downsample:])}}})["sampled_sequence"]) for p in primes]    
-        primes = torch.stack(processed_primes)
+                    **{"inputs": {"pitch": {"data": p[:seq_len_cache*time_downsample:]}}})["sampled_sequence"]) for p in primes]    
+        primes = np.stack(processed_primes)
+        primes = primes.reshape(primes.shape[0], 1, primes.shape[1])
 
     else:
         if model_type=="transformer":
-            processed_primes = [torch.tensor(pitch_task_fn(
-                **{"inputs": {"pitch": {"data": torch.tensor(p)}}})["sampled_sequence"]) for p in primes]
-            primes = torch.stack(processed_primes)
+            processed_primes = [pitch_task_fn(
+                **{"inputs": {"pitch": {"data": p}}})["sampled_sequence"] for p in primes]
+            primes = np.stack(processed_primes)
+            primes = primes.reshape(primes.shape[0], 1, primes.shape[1])
         else:
             invert_pitch_task_fn = partial(invert_pitch_task_fn, qt_transform = pitch_qt)
             primes = None

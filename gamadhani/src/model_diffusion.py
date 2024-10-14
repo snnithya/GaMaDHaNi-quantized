@@ -1032,7 +1032,6 @@ class UNetPitchConditioned(UNetBase):
         noise = torch.normal(mean=0, std=1, size=(batch_size, self.inp_dim, self.seq_len)).to(self.device)
         padded_noise, padding = self.pad_to(noise, self.strides_prod)
         t_array = torch.ones((batch_size,)).to(self.device)
-        pdb.set_trace()
         f0 = f0.to(self.device)
         padded_f0, _ = self.pad_to(f0, self.strides_prod)
         singer = singer.to(self.device)
@@ -1069,13 +1068,6 @@ class UNetPitchConditioned(UNetBase):
                 conditioned_logits = self.forward(padded_noise, t_tensor * t_array, padded_f0, singer, drop_tokens=False, drop_all=False)
                 total_logits = strength * conditioned_logits + (1 - strength) * unconditioned_logits
                 padded_noise = padded_noise + 1 / num_steps * total_logits
-                # save padded_noise after every 10 steps
-                if t % 0.1 == 0:
-                    noise = self.unpad(padded_noise, padding)
-                    if invert_audio_fn is not None:
-                        noise = invert_audio_fn(noise)
-                    if log_interim_samples:
-                        torchaudio.save(f'output/intermediate/cfg_samples_{t}.wav', noise.detach().cpu(), sample_rate=16000)
             
             noise = self.unpad(padded_noise, padding)
         return noise, f0, singer

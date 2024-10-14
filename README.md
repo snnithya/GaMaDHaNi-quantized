@@ -5,7 +5,7 @@ GaMaDHaNi is a modular two-level hierarchy, consisting of a generative model on 
 
 :book: Read our ISMIR 2024 Paper [here](https://arxiv.org/abs/2408.12658)\
 :headphones: Check out the audio samples [here](https://snnithya.github.io/gamadhani-samples/)\
-:computer: Play with the interactive demo [here] 
+:computer: Play with the interactive demo [here](https://huggingface.co/spaces/snnithya/GaMaDHaNi) 
 ## Installation
 
    ```bash
@@ -15,18 +15,18 @@ GaMaDHaNi is a modular two-level hierarchy, consisting of a generative model on 
 
 ## How to use
 
-For generating without any melodic prompt(no pitch prime)
+For generating without any melodic prompt (no pitch prime)
 
 ```bash
 cd GaMaDHaNi
-python scripts/generate.py --pitch_model_type=diffusion --prime=False --number_of_samples=1 --download_model_from_hf=True
+python generate.py --pitch_model_type=diffusion --prime=False --number_of_samples=1 --download_model_from_hf=True
 ```
 
-For generating with a melodic prompt(pitch prime)
+For generating with predefined melodic prompts (pitch primes)
 
 ```bash
 cd GaMaDHaNi
-python scripts/generate.py --pitch_model_type=diffusion --prime=True --number_of_samples=1 --download_model_from_hf=True 
+python generate.py --pitch_model_type=diffusion --prime=True --number_of_samples=1 --download_model_from_hf=True 
 ```
 Note: Currently the only pitch_model_type allowed is "diffusion", "transformer" model is soon to be released.
 
