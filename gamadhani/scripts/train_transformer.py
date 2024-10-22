@@ -1,20 +1,23 @@
 import wandb
 import logging
 import os
-
-import gin
 import pytorch_lightning as pl
 import torch
 from absl import app, flags
 from torch.utils import data
-import GaMaDHaNi
-from GaMaDHaNi.src.protobuf.data_example import AudioExample
-from GaMaDHaNi.src.dataset import SequenceDataset
+import sys
+sys.path.append("..")
+import gamadhani
+from gamadhani.src.protobuf.data_example import AudioExample
+from gamadhani.src.dataset import SequenceDataset
+from gamadhani.src.model_transformer import XTransformerPrior
+from gamadhani.utils.utils import search_for_run
 from pytorch_lightning.plugins.environments import SLURMEnvironment
 
 import wandb
 import time
 import pdb
+import gin
 
 FLAGS = flags.FLAGS
 flags.DEFINE_multi_string("config",
@@ -80,6 +83,7 @@ flags.DEFINE_bool("log_to_wandb",
 flags.DEFINE_string("wandb_id",
                     default=None,
                     help="Option to allow user to explicitly enter wandb id, in the case that wandb id != slurm id.")
+
 
 def add_ext(config: str):
     if config[-4:] != ".gin":
@@ -189,16 +193,15 @@ def main(argv):
         # decoder_inputs - (256, 16): discrete code indices, number of quantizers
         # decoder_targets - (256, 16): target discrete code indices, number of quantizers (decoder_inputs[ind + 1, :] = decoder_targets[ind, :])
 
-    # if not any(map(lambda x: "flattened" in x, FLAGS.config)):
-    #     logging.info("quantizer number retrieval")
-    #     # import pdb; pdb.set_trace()
-    #     with gin.unlock_config():
-    #         gin.parse_config(
-    #             f"NUM_QUANTIZERS={train[0]['decoder_inputs'].shape[-1]}") # updates NUM_QUANTIZERS based on the data shape :)
+    if not any(map(lambda x: "flattened" in x, FLAGS.config)):
+        logging.info("quantizer number retrieval")
+        with gin.unlock_config():
+            gin.parse_config(
+                f"NUM_QUANTIZERS={train[0]['decoder_inputs'].shape[-1]}") # updates NUM_QUANTIZERS based on the data shape :)
     
-    # logging.info("building model")
-    # # model = Prior()
-    # model = XTransformerPrior()
+    logging.info("building model")
+    # model = Prior()
+    model = XTransformerPrior()
 
     train_loader = data.DataLoader(
         train,
@@ -214,98 +217,97 @@ def main(argv):
         drop_last=False,
         num_workers=FLAGS.workers,
     )
-    temp = iter(val_loader)
-    batch = next(temp)
-    print(batch)
+    # temp = iter(val_loader)
+    # batch = next(temp)
+    # print(batch)
     # # pdb.set_trace()
-    # with open(os.path.join(checkpoint_folder, "config.gin"),
-    #           "w") as config_out:
-    #     config_out.write(gin.config_str())
+    with open(os.path.join(checkpoint_folder, "config.gin"),
+              "w") as config_out:
+        config_out.write(gin.config_str())
 
-    # val_check = {}
+    val_check = {}
     # # if len(train_loader) >= FLAGS.val_every:
     # #     val_check["val_check_interval"] = FLAGS.val_every
     # # else:
     # # nepoch = FLAGS.val_every // len(train_loader)
-    # val_check["check_val_every_n_epoch"] = FLAGS.val_every
+    val_check["check_val_every_n_epoch"] = FLAGS.val_every
 
-    # last_checkpoint = pl.callbacks.ModelCheckpoint(dirpath=os.path.join(checkpoint_folder, 'models'), 
-    # filename="checkpoint-{epoch:02d}-{val_cross_entropy:.2f}-{cross_entropy:.2f}",
-    # save_on_train_epoch_end=True,
-    # every_n_epochs=FLAGS.checkpoint_model_every,
-    # save_last=True,
-    # save_top_k=-1)
+    last_checkpoint = pl.callbacks.ModelCheckpoint(dirpath=os.path.join(checkpoint_folder, 'models'), 
+    filename="checkpoint-{epoch:02d}-{val_cross_entropy:.2f}-{cross_entropy:.2f}",
+    save_on_train_epoch_end=True,
+    every_n_epochs=FLAGS.checkpoint_model_every,
+    save_last=True,
+    save_top_k=-1)
 
-    # class DebuggingCallback(pl.Callback):
-    #     def __init__(self, batch_to_debug):
-    #         super().__init__()
-    #         self.batch_to_debug = batch_to_debug
+    class DebuggingCallback(pl.Callback):
+        def __init__(self, batch_to_debug):
+            super().__init__()
+            self.batch_to_debug = batch_to_debug
 
-    #     def on_train_batch_start(self, trainer, pl_module):
-    #         if trainer.batch_idx == self.batch_to_debug:
-    #             print(f"Batch {self.batch_to_debug} started. Entering debug mode.")
-    #             pdb.set_trace()
+        def on_train_batch_start(self, trainer, pl_module):
+            if trainer.batch_idx == self.batch_to_debug:
+                print(f"Batch {self.batch_to_debug} started. Entering debug mode.")
+                pdb.set_trace()
 
-    # # Set the batch number you want to debug
-    # # batch_to_debug = 7  # Update with the batch that's causing the error
-    # # callbacks = [DebuggingCallback(batch_to_debug)]
+    # Set the batch number you want to debug
+    # batch_to_debug = 7  # Update with the batch that's causing the error
+    # callbacks = [DebuggingCallback(batch_to_debug)]
 
-    # callbacks = [
-    #     pl.callbacks.ModelCheckpoint(monitor="val_cross_entropy",
-    #                                  filename='best',
-    #                                  dirpath=os.path.join(checkpoint_folder, 'models')),
-    #     last_checkpoint,
-    #     pl.callbacks.EarlyStopping(
-    #         "val_cross_entropy",
-    #         patience=20,
-    #     )
-    # ]
+    callbacks = [
+        pl.callbacks.ModelCheckpoint(monitor="val_cross_entropy",
+                                     filename='best',
+                                     dirpath=os.path.join(checkpoint_folder, 'models')),
+        last_checkpoint,
+        pl.callbacks.EarlyStopping(
+            "val_cross_entropy",
+            patience=100,
+        )
+    ]
 
-    # if FLAGS.ema is not None:
-    #     callbacks.append(msprior.utils.EMA(FLAGS.ema))
+    if FLAGS.ema is not None:
+        callbacks.append(msprior.utils.EMA(FLAGS.ema))
     
-    # logging.info("creating trainer")
-    # if log_to_wandb:
-    #     callbacks.append(pl.callbacks.LearningRateMonitor(logging_interval='step'))
-    #     wandb_logger = pl.loggers.WandbLogger(
-    #         project="msprior",
-    #         save_dir=os.path.join(tmp, f'wandb-{wandb_run.name}'),
-    #         offline=False,
-    #         id=wandb_run.id
-    #     )
-    # else:
-    #     wandb_logger = None
-    # trainer = pl.Trainer(
-    #     logger=wandb_logger,
-    #     accelerator='gpu',
-    #     devices=[FLAGS.gpu],
-    #     callbacks=callbacks,
-    #     log_every_n_steps=10,
-    #     **val_check,
-    #     max_epochs=FLAGS.max_epochs,
-    #     plugins=[SLURMEnvironment(auto_requeue=True)],
-    #     profiler="simple"
-    # )
+    logging.info("creating trainer")
+    if log_to_wandb:
+        callbacks.append(pl.callbacks.LearningRateMonitor(logging_interval='step'))
+        wandb_logger = pl.loggers.WandbLogger(
+            project="msprior",
+            save_dir=os.path.join(tmp, f'wandb-{wandb_run.name}'),
+            offline=False,
+            id=wandb_run.id
+        )
+    else:
+        wandb_logger = None
+    trainer = pl.Trainer(
+        logger=wandb_logger,
+        accelerator='gpu',
+        devices=[FLAGS.gpu],
+        callbacks=callbacks,
+        log_every_n_steps=10,
+        **val_check,
+        max_epochs=FLAGS.max_epochs,
+        plugins=[SLURMEnvironment(auto_requeue=True)],
+        profiler="simple"
+    )
 
-    # torch.backends.cudnn.benchmark = True
-    # torch.set_float32_matmul_precision('high')
+    torch.backends.cudnn.benchmark = True
+    torch.set_float32_matmul_precision('high')
 
-    # logging.info("launch training")
-    # # pdb.set_trace()
-    # run = search_for_run(checkpoint_folder)
-    # if run is not None:
-    #     step = torch.load(run, map_location='cpu')["global_step"]
-    #     trainer.fit_loop.epoch_loop._batches_that_stepped = step
+    logging.info("launch training")
+    run = search_for_run(checkpoint_folder)
+    if run is not None:
+        step = torch.load(run, map_location='cpu')["global_step"]
+        trainer.fit_loop.epoch_loop._batches_that_stepped = step
         
     
-    # trainer.fit(
-    #     model,
-    #     train_loader,
-    #     val_loader,
-    #     ckpt_path=run,
-    # )
+    trainer.fit(
+        model,
+        train_loader,
+        val_loader,
+        ckpt_path=run,
+    )
 
-    # if log_to_wandb:
-    #     wandb.finish()
+    if log_to_wandb:
+        wandb.finish()
 if __name__ == "__main__":
     app.run(main)

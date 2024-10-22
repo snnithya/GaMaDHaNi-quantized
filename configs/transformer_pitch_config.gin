@@ -1,9 +1,10 @@
 from __gin__ import dynamic_registration
-
-import torch
-from src import model_transformer
-from src import dataset
-from src import task_functions
+from gamadhani import src
+from gamadhani.src import dataset
+from gamadhani.src import model_transformer
+from gamadhani.src import task_functions
+from gamadhani.utils import utils
+import torch.optim
 
 MODEL_DIM = 512
 EMB_DIM = 512
@@ -27,9 +28,9 @@ model_transformer.XTransformerPrior:
     dropout_rate = %DROPOUT_RATE
     
 
-dataset.Task:
-    read_fn = @task_functions.pitch_read_downsample
-    invert_fn = @task_functions.invert_pitch_read_downsample
+src.dataset.Task:
+    read_fn = @src.task_functions.pitch_read_downsample
+    invert_fn = @src.task_functions.invert_pitch_read_downsample
     kwargs = {"seq_len": %SEQ_LEN, 
                     "decoder_key": "pitch",
                     "min_norm_pitch": -4915,
@@ -37,7 +38,24 @@ dataset.Task:
                     "pitch_downsample": 10,
                     "base_tonic": 440.}
 
-dataset.SequenceDataset:
+src.dataset.SequenceDataset:
     task = @dataset.Task()
     apply_transform = False
 
+model_transformer.XTransformerPrior.configure_optimizers:
+    optimizer_cls = @torch.optim.AdamW
+    scheduler_cls = @utils.build_warmed_exponential_lr_scheduler
+
+utils.build_warmed_exponential_lr_scheduler:
+    start_factor = .01
+    peak_iteration = 10000
+    cycle_length = 394600
+    eta_min = 0.1
+    eta_max = %LR
+
+utils.set_seed:
+    seed = 2023
+
+torch.optim.AdamW:
+    lr = %LR
+    betas = (.9, .98)
