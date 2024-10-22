@@ -4,4 +4,5 @@ Version: 0.1
 Summary: Official Codebase for the ISMIR 2024 paper; GaMaDHaNi: Hierarchical Generative Modeling of Melodic Vocal Contours in Hindustani Classical Music
 Home-page: https://github.com/snnithya/GaMaDHaNi
 Author: Nithya Shikarpur, Krishna Maneesha Dendukuri, Yusong Wu, Antoine Caillon, Cheng-Zhi Anna Huang
-Author-email: snnithya@mit.edu
+Author-email: snnithya@gmail.com
+Provides-Extra: training

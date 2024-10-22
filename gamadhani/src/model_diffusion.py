@@ -474,7 +474,6 @@ class UNet(UNetBase):
                     x_alpha_t[:, :, :prime.shape[-1]] = ((1 - alpha_t) * noise[:, :, :prime.shape[-1]]) + (alpha_t * prime) # fill in the prime in the beginning of each x_t
                 diff =  self.forward(x_alpha_t, t_tensor * t_array)
                 x_alpha_t = x_alpha_t + 1 / num_steps * diff
-                
         return x_alpha_t
 
     def sample_sdedit(self, cond, batch_size, num_steps, t0=0.5):
@@ -1033,7 +1032,6 @@ class UNetPitchConditioned(UNetBase):
         noise = torch.normal(mean=0, std=1, size=(batch_size, self.inp_dim, self.seq_len)).to(self.device)
         padded_noise, padding = self.pad_to(noise, self.strides_prod)
         t_array = torch.ones((batch_size,)).to(self.device)
-        pdb.set_trace()
         f0 = f0.to(self.device)
         padded_f0, _ = self.pad_to(f0, self.strides_prod)
         singer = singer.to(self.device)
@@ -1045,7 +1043,7 @@ class UNetPitchConditioned(UNetBase):
         noise = self.unpad(padded_noise, padding)
         return noise
 
-    def sample_cfg(self, batch_size: int, num_steps: int, f0=None, singer=[4, 25, 45, 32], strength=1):
+    def sample_cfg(self, batch_size: int, num_steps: int, f0=None, singer=[4, 25, 45, 32], strength=1, invert_audio_fn=None, log_interim_samples=False):
         # CREATE INITIAL NOISE
         noise = torch.normal(mean=0, std=1, size=(batch_size, self.inp_dim, self.seq_len)).to(self.device)
         padded_noise, padding = self.pad_to(noise, self.strides_prod)
@@ -1065,26 +1063,11 @@ class UNetPitchConditioned(UNetBase):
             # SAMPLE FROM MODEL
             for t in np.linspace(0, 1, num_steps + 1)[:-1]:
                 t_tensor = torch.tensor(t)
-                # debugging code (to remove soon)
-                # if torch.isnan(padded_noise).any():
-                #     print('Beginning NAN')
-                #     pdb.set_trace()
-                # else:
-                #     print(padded_noise)
-                #     print('nan in padded_noise: ', torch.isnan(padded_noise).any())
-                #     print('nan in padded_f0: ', torch.isnan(padded_f0).any())
-                #     print('nan in singer: ', torch.isnan(singer).any())
-                #     try:
-                #         print('nan in unconditional_logits: ', torch.isnan(unconditioned_logits).any())
-                #         print('nan in conditioned_logits: ', torch.isnan(conditioned_logits).any())
-                #     except:
-                #         pass
                     
                 unconditioned_logits = self.forward(padded_noise, t_tensor * t_array, padded_f0, singer, drop_tokens=False, drop_all=True)
                 conditioned_logits = self.forward(padded_noise, t_tensor * t_array, padded_f0, singer, drop_tokens=False, drop_all=False)
                 total_logits = strength * conditioned_logits + (1 - strength) * unconditioned_logits
                 padded_noise = padded_noise + 1 / num_steps * total_logits
-                
             
             noise = self.unpad(padded_noise, padding)
         return noise, f0, singer

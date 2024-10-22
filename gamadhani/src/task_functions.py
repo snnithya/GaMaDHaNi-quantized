@@ -92,13 +92,13 @@ def pitch_read_downsample_diff(
     if seq_len is not None:
         start = randint(0, max(0, data.shape[0] - seq_len*time_downsample - 1))
         end = start + seq_len*time_downsample
-        f0 = inputs[decoder_key]['data'][start:end:time_downsample].clone()
+        f0 = np.copy(inputs[decoder_key]['data'][start:end:time_downsample])
     else:
-        f0 = data.clone()
+        f0 = np.copy(data)
 
     # normalize pitch
     f0[f0 == 0] = np.nan
-    norm_f0 = f0.clone().numpy()
+    norm_f0 = f0
     norm_f0[~np.isnan(norm_f0)] = (1200) * np.log2(norm_f0[~np.isnan(norm_f0)] / 440)
     del f0
 
