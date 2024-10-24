@@ -94,7 +94,7 @@ def pitch_read_downsample_diff(
         end = start + seq_len*time_downsample
         f0 = np.copy(inputs[decoder_key]['data'][start:end:time_downsample])
     else:
-        f0 = np.copy(data)
+        f0 = np.copy(data[::time_downsample])
 
     # normalize pitch
     f0[f0 == 0] = np.nan

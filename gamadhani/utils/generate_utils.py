@@ -92,7 +92,6 @@ def load_pitch_fns(pitch_path: str, model_type: str, prime: bool = False, prime_
             pitch_task_fn = partial(pitch_task_fn, qt_transform = pitch_qt, add_noise_to_silence = True,
             seq_len = None)
             invert_pitch_task_fn = partial(invert_pitch_task_fn, qt_transform = pitch_qt)
-        
         processed_primes = [torch.tensor(pitch_task_fn(
                     **{"inputs": {"pitch": {"data": p[:seq_len_cache*time_downsample:]}}})["sampled_sequence"]) for p in primes]    
         primes = np.stack(processed_primes)
