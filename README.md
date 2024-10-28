@@ -24,7 +24,7 @@ python generate.py --pitch_model_type=diffusion --prime=False --number_of_sample
 
 For generating with predefined melodic prompts (pitch primes). 
 
-Note: You will need download_model_from_hf=True to be able to access the pitch primes. You will be able to see the primes (first 4s of all generations) plotted in a different colour in the pitch plots of generated samples.
+Note: You will need download_model_from_hf=True to be able to access the pitch primes. You will be able to see the primes (first 4s of all generations) plotted in a different colour in the pitch plots of generated samples. 'num_samples' can go from 1 to 16 for generation with primes.
 
 ```bash
 cd GaMaDHaNi
