@@ -477,20 +477,13 @@ class UNet(UNetBase):
         return x_alpha_t
 
     def sample_sdedit(self, cond, batch_size, num_steps, t0=0.5):
-        # pdb.set_trace()
-        t0_steps = int(t0*num_steps)
-        # iterate to get x0
+        t0_steps = int((1-t0)*num_steps) 
         t_array = torch.ones((batch_size,)).to(self.device)
         x_alpha_t = cond.clone() 
         with torch.no_grad():
-            for t in np.linspace(t0, 0, t0_steps + 1)[:-1]:
+            x_alpha_t = t0 * x_alpha_t + (1 - t0) * torch.normal(0, 1, x_alpha_t.shape).to(x_alpha_t)
+            for t in np.linspace(t0, 1, t0_steps)[:-1]:
                 t_tensor = torch.tensor(t)
-                x_alpha_t = x_alpha_t - (1 / num_steps) * self.forward(x_alpha_t, t_tensor * t_array)
-            # x_alpha_t is x0 now
-            # iterate to get x1
-            for t in np.linspace(0, 1, num_steps + 1)[:-1]:
-                t_tensor = torch.tensor(t)
-                # print(unet.device, noise.device, t_tensor.device, t_array.device)
                 x_alpha_t = x_alpha_t + 1 / num_steps * self.forward(x_alpha_t, t_tensor * t_array)
 
         return x_alpha_t
