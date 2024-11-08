@@ -1,11 +1,11 @@
 import numpy as np
+import pandas as pd
 import torch
 import os
 from functools import partial
 import gin
 from absl import flags, app
-# import sys
-# sys.path.append("..")
+
 from gamadhani.utils.generate_utils import load_pitch_fns, load_audio_fns
 import gamadhani.utils.pitch_to_audio_utils as p2a
 from gamadhani.utils.utils import get_device, plot, save_figure, save_csv, save_audio, download_models, download_data
@@ -53,11 +53,15 @@ def generate_pitch(pitch_model,
         samples = pitch_model.sample_fn(batch_size=num_samples, seq_len=seq_len, prime=processed_primes)
 
     inverted_pitches = [invert_pitch_fn(**{"f0": sample}) for sample in samples.detach().cpu().numpy()]
-
     if outfolder is not None:
         for i, pitch in enumerate(inverted_pitches):
-            fig = plot(f0_array=pitch, time_array=np.arange(0, len(pitch) / pitch_sample_rate, 1/pitch_sample_rate), prime=prime)
-            save_figure(fig, dest_path=f"{outfolder}/output/pitch/{i}.png")
+            outfile = f"{outfolder}/output/" 
+            time_array = np.arange(0, len(pitch) / pitch_sample_rate, 1/pitch_sample_rate)
+
+            save_csv(df = pd.DataFrame({"f0": pitch.reshape(-1), "time": time_array}), dest_path=os.path.join(outfile, f"pitch/{i}.csv"))
+
+            fig = plot(f0_array=pitch, time_array=time_array, prime=prime)
+            save_figure(fig, dest_path=os.path.join(outfile, f"plots/{i}.png"))
     return samples, torch.Tensor(np.array(inverted_pitches)).to(pitch_model.device)
 
 def generate_audio(audio_model, f0s, invert_audio_fn, outfolder, singers=[3], num_steps=100):
@@ -71,7 +75,6 @@ def generate_audio(audio_model, f0s, invert_audio_fn, outfolder, singers=[3], nu
             outfile = f"{outfolder}/output/audio/{i}.wav"
             logging.log(logging.INFO, f"Saving audio {i} to {outfile}")
             save_audio(audio_array=a.clone().detach().unsqueeze(0).cpu(), dest_path=outfile, sample_rate=16000)
-            # save_csv()
     return audio
 
 def generate(audio_model=None, 
@@ -119,7 +122,7 @@ def generate(audio_model=None,
     interpolated_pitch = p2a.interpolate_pitch(pitch=pitch, audio_seq_len=audio_seq_len)    # interpolate pitch values to match the audio model's input size
     interpolated_pitch = torch.nan_to_num(interpolated_pitch, nan=196)  # replace nan values with silent token
     interpolated_pitch = interpolated_pitch.squeeze(1) # to match input size by removing the extra dimension
-   
+    interpolated_pitch = interpolated_pitch.float()
     audio_model = audio_model.to(device)
     audio = generate_audio(audio_model, interpolated_pitch, invert_audio_fn, singers=singers, num_steps=100, outfolder=outfolder)
     return pitch, audio
@@ -178,8 +181,11 @@ def main(argv):
         pitch_path, qt_pitch_path, audio_path, qt_audio_path = download_models(hf_model_repo_id, pitch_model_type)
 
     if seq_len:
-        seq_len_cache = int((1/3) * seq_len)
-        seq_len_gen = int((2/3) * seq_len)
+        if prime:
+            seq_len_cache = int((1/3) * seq_len)
+            seq_len_gen = int((2/3) * seq_len)
+        else:
+            seq_len_gen = seq_len
         
     #1. loading pitch and audio model and supporting functions
     pitch_model, pitch_qt, pitch_task_fn, invert_pitch_fn, primes = load_pitch_fns(pitch_path=pitch_path, 

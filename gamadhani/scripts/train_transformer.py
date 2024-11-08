@@ -35,6 +35,9 @@ flags.DEFINE_integer("gpu", default=0, help="gpu index.")
 flags.DEFINE_integer("workers",
                      default=0,
                      help="num workers during data loading.")
+flags.DEFINE_integer("patience",
+                     default=20,
+                     help="patience parameter for EarlyStopping")
 flags.DEFINE_string("pretrained_embedding",
                     default=None,
                     help="use pretrained embeddings from rave.")
@@ -182,12 +185,7 @@ def main(argv):
     else:
         train = SequenceDataset(db_path=os.path.join(FLAGS.db_path, 'train'))
         val = SequenceDataset(db_path=os.path.join(FLAGS.db_path, 'val'))
-        
-        # inps = [ind for ind in range(len(train)) if not train[ind]]
-        #this still returned items with dict objects and not None; so figure if anything at all is getting dropped
-        # first check if anything at all gets out of range first of all and then see f the original range and dropped range makes sense
-        # print(len(inps))
-
+       
         # train, val have keys encoder_inputs, decoder_inputs, decoder_targets
         # encoder_inputs - empty
         # decoder_inputs - (256, 16): discrete code indices, number of quantizers
@@ -200,7 +198,6 @@ def main(argv):
                 f"NUM_QUANTIZERS={train[0]['decoder_inputs'].shape[-1]}") # updates NUM_QUANTIZERS based on the data shape :)
     
     logging.info("building model")
-    # model = Prior()
     model = XTransformerPrior()
 
     train_loader = data.DataLoader(
@@ -217,19 +214,12 @@ def main(argv):
         drop_last=False,
         num_workers=FLAGS.workers,
     )
-    # temp = iter(val_loader)
-    # batch = next(temp)
-    # print(batch)
-    # # pdb.set_trace()
+   
     with open(os.path.join(checkpoint_folder, "config.gin"),
               "w") as config_out:
         config_out.write(gin.config_str())
 
     val_check = {}
-    # # if len(train_loader) >= FLAGS.val_every:
-    # #     val_check["val_check_interval"] = FLAGS.val_every
-    # # else:
-    # # nepoch = FLAGS.val_every // len(train_loader)
     val_check["check_val_every_n_epoch"] = FLAGS.val_every
 
     last_checkpoint = pl.callbacks.ModelCheckpoint(dirpath=os.path.join(checkpoint_folder, 'models'), 
@@ -239,20 +229,7 @@ def main(argv):
     save_last=True,
     save_top_k=-1)
 
-    class DebuggingCallback(pl.Callback):
-        def __init__(self, batch_to_debug):
-            super().__init__()
-            self.batch_to_debug = batch_to_debug
-
-        def on_train_batch_start(self, trainer, pl_module):
-            if trainer.batch_idx == self.batch_to_debug:
-                print(f"Batch {self.batch_to_debug} started. Entering debug mode.")
-                pdb.set_trace()
-
-    # Set the batch number you want to debug
-    # batch_to_debug = 7  # Update with the batch that's causing the error
-    # callbacks = [DebuggingCallback(batch_to_debug)]
-
+   
     callbacks = [
         pl.callbacks.ModelCheckpoint(monitor="val_cross_entropy",
                                      filename='best',
@@ -260,7 +237,7 @@ def main(argv):
         last_checkpoint,
         pl.callbacks.EarlyStopping(
             "val_cross_entropy",
-            patience=100,
+            patience=FLAGS.patience,
         )
     ]
 

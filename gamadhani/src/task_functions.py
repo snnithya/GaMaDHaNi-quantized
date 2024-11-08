@@ -23,13 +23,13 @@ def pitch_read_downsample(inputs: TensorDict,
             start = start if start is not None else randint(0, max(0, data.shape[0] - seq_len * time_downsample - 1))
             end = start + seq_len * time_downsample
             
-            f0 = data[start : end+1 : time_downsample].copy()
+            f0 = np.copy(data[start : end+1 : time_downsample])
         else:
-            f0 = data.copy()
+            f0 = np.copy(data)
 
         # normalizing pitch contour from hertz to cents
         f0[f0 == 0] = np.nan
-        norm_f0 = f0.copy()
+        norm_f0 = np.copy(f0)
         norm_f0[~np.isnan(norm_f0)] = (1200) * np.log2(norm_f0[~np.isnan(norm_f0)] / base_tonic)
         del f0
 
@@ -48,8 +48,8 @@ def pitch_read_downsample(inputs: TensorDict,
         # add silence token of 0
         norm_f0[np.isnan(norm_f0)] = 0
 
-        input_tokens = norm_f0[:-1, None].copy()
-        target_tokens = norm_f0[1:, None].copy()
+        input_tokens = np.copy(norm_f0[:-1, None])
+        target_tokens = np.copy(norm_f0[1:, None])
         return {
             "decoder_inputs": input_tokens,
             "decoder_targets": target_tokens,
@@ -64,6 +64,7 @@ def invert_pitch_read_downsample(f0,
                           seq_len: int=None, 
                           decoder_key: str=None,
                           **kwargs):
+    f0 = f0.reshape(-1, 1)
     f0[f0 == 0] = np.nan
     f0[~np.isnan(f0)] = ((f0[~np.isnan(f0)] - 1) * pitch_downsample)
     f0[~np.isnan(f0)] = f0[~np.isnan(f0)] + min_norm_pitch
