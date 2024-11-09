@@ -6,7 +6,7 @@ import torch
 from absl import app, flags
 from torch.utils import data
 import sys
-sys.path.append("..")
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "../../")))
 import gamadhani
 from gamadhani.src.protobuf.data_example import AudioExample
 from gamadhani.src.dataset import SequenceDataset
