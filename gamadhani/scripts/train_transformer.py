@@ -22,7 +22,7 @@ import gin
 FLAGS = flags.FLAGS
 flags.DEFINE_multi_string("config",
                           default="decoder_only",
-                          help="config to parse.")
+                          help="config file to parse.")
 flags.DEFINE_string("db_path",
                     default=None,
                     help="path to dataset.")
@@ -33,7 +33,7 @@ flags.DEFINE_integer("batch_size", default=64, help="batch size.")
 flags.DEFINE_string("name", default=None, required=False, help="train name.")
 flags.DEFINE_integer("gpu", default=0, help="gpu index.")
 flags.DEFINE_integer("workers",
-                     default=0,
+                     default=4,
                      help="num workers during data loading.")
 flags.DEFINE_integer("patience",
                      default=20,
@@ -91,6 +91,8 @@ flags.DEFINE_string("wandb_id",
 def add_ext(config: str):
     if config[-4:] != ".gin":
         config += ".gin"
+    if not os.path.exists(config):
+        config = os.path.join(os.getcwd(), config)
     return config
 
 

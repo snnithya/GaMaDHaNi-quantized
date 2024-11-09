@@ -26,11 +26,24 @@ For generating with predefined melodic prompts (pitch primes).
 
 Note: You will need download_model_from_hf=True to be able to access the pitch primes. You will be able to see the primes (first 4s of all generations) plotted in a different colour in the pitch plots of generated samples. 'num_samples' can go from 1 to 16 for generation with primes.
 
+Diffusion-based Pitch Generation Model:
 ```bash
 cd GaMaDHaNi
 python generate.py --pitch_model_type=diffusion --prime=True --number_of_samples=1 --download_model_from_hf=True 
 ```
-Note: Currently the only pitch_model_type allowed is "diffusion", "transformer" model is soon to be released.
+
+Transformer-based Pitch Generation Model:
+```bash
+cd GaMaDHaNi
+python generate.py --pitch_model_type=transformer --prime=True --number_of_samples=1 --download_model_from_hf=True 
+```
+
+
+For training the Pitch Generation Model(Transformer)
+```bash
+cd GaMaDHaNi
+python gamadhani/scripts/train_transformer.py --config configs/transformer_pitch_config.gin --gpu=0 --val_every=1 --max_epochs=1000 --batch_size=4
+```
 
 ## BibTex
 ```

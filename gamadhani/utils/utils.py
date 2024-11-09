@@ -16,7 +16,10 @@ def download_models(model_repo_id, pitch_model_type):
     PITCH_MODEL_FILENAME = f"{pitch_model_type}_pitch_model-model.ckpt"
     AUDIO_MODEL_FILENAME = "pitch_to_audio_model-model.ckpt"
     pitch_path = hf_hub_download(repo_id=model_repo_id, filename=PITCH_MODEL_FILENAME)
-    qt_path_pitch = hf_hub_download(repo_id=model_repo_id, filename=f"{pitch_model_type}_pitch_model-qt.joblib")
+    if pitch_model_type=="diffusion":
+        qt_path_pitch = hf_hub_download(repo_id=model_repo_id, filename=f"{pitch_model_type}_pitch_model-qt.joblib")
+    else:
+        qt_path_pitch = None
     audio_path = hf_hub_download(repo_id=model_repo_id, filename=AUDIO_MODEL_FILENAME)
     qt_path_p2a = hf_hub_download(repo_id=model_repo_id, filename="pitch_to_audio_model-qt.joblib")
     return pitch_path, qt_path_pitch, audio_path, qt_path_p2a
