@@ -48,11 +48,14 @@ python generate.py --pitch_model_type=transformer --prime=True --number_of_sampl
 ```
 
 
-**Training the Pitch Generation Model(Transformer)**
+**Training the Pitch Generation Model**
+
+Transformer-based Pitch Generation Model:
 ```bash
 cd GaMaDHaNi
-python gamadhani/scripts/train_transformer.py --config configs/transformer_pitch_config.gin --gpu=0 --val_every=1 --max_epochs=1000 --batch_size=4
+python gamadhani/scripts/train_transformer.py --config configs/transformer_pitch_config.gin --db_path HF_DB_PATH --gpu=0 --val_every=1 --max_epochs=500 --batch_size=4
 ```
+Note: `HF_DB_PATH` is soon to be released.
 
 ## BibTex
 ```
