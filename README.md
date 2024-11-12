@@ -57,6 +57,7 @@ python gamadhani/scripts/train_transformer.py --config configs/transformer_pitch
 ```
 Note: `HF_DB_PATH` is soon to be released.
 
+Training scripts for the diffusion-based Pitch Generation Model and Pitch to Audio Generation model are soon to be released. Stay tuned!
 ## BibTex
 ```
 @article{shikarpur2024hierarchical,
