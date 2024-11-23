@@ -45,6 +45,7 @@ def generate_pitch(pitch_model,
                    processed_primes=None,
                    pitch_sample_rate=200,
                    prime=False):
+    logging.log(logging.INFO, 'Generate pitch function')
     if processed_primes is not None:
         processed_primes = torch.tensor(processed_primes).to(pitch_model.device)
     if pitch_model_type=="diffusion":
@@ -194,11 +195,13 @@ def main(argv):
                                                                                    prime_file=prime_file, 
                                                                                    qt_path = qt_pitch_path,
                                                                                    number_of_samples=number_of_samples,
-                                                                                   config_path=pitch_config_path)  
+                                                                                   config_path=pitch_config_path,
+                                                                                   device=device)  
 
     audio_model, audio_qt, audio_seq_len, invert_audio_fn = load_audio_fns(audio_path=audio_path, 
                                                                            qt_path=qt_audio_path,
-                                                                           config_path=audio_config_path)
+                                                                           config_path=audio_config_path,
+                                                                           device=device)
   
     # 3. generate (I) pitch and (II) convert pitch to audio (generate audio conditioned on pitch)
     pitch, audio = generate(audio_model=audio_model,
