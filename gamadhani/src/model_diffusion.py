@@ -916,7 +916,12 @@ class UNetPitchConditioned(UNetBase):
             x = x[:,:,pad[0]:-pad[1]]
         return x
 
-    def forward(self, x, time, f0, singer, drop_tokens=True, drop_all=False):
+    def forward(self, x, time, f0, singer, drop_tokens=True, drop_all=False, return_interim_activations=False):
+        if return_interim_activations:
+            interim_activations = {}
+        else:
+            interim_activations = None
+        
         # INITIAL PROJECTION
         x = self.initial_projection(x)
 
@@ -959,12 +964,18 @@ class UNetPitchConditioned(UNetBase):
                 x = _concat_condition(x, cond)
             # print(x.shape, time.shape, f0.shape, skips[-1].shape)
             x = downsample_layer(x)
+            if interim_activations is not None:
+                interim_activations[f"downsample_layer_{ind}"] = x.clone().detach()
             f0 = self.f0_conv_layers[ind](f0)
+            if interim_activations is not None:
+                interim_activations[f"f0_conv_layer_{ind}"] = f0.clone().detach()
         skips.append(torch.cat([x, f0], -2))
         # BOTTLENECK ATTENTION
         x = torch.permute(x, (0, 2, 1))
         x = self.attention_layers(x)
         x = torch.permute(x, (0, 2, 1))
+        if interim_activations is not None:
+            interim_activations["bottleneck_attention"] = x.clone().detach()
         # print(x.shape, time.shape, f0.shape, skips[-1].shape)
         # pdb.set_trace()
         # UPSAMPLING
@@ -973,13 +984,17 @@ class UNetPitchConditioned(UNetBase):
             for cond in conditions:
                 x = _concat_condition(x, cond)
             x = torch.cat([x, skips.pop(-1)], 1)
+            if interim_activations is not None:
+                interim_activations[f"upsample_layer_input_{ind}"] = x.clone().detach()
             # print(x.shape, time.shape, f0.shape)
             x = upsample_layer(x)
+            if interim_activations is not None:
+                interim_activations[f"upsample_layer_{ind}"] = x.clone().detach()
         x = torch.cat([x, skips.pop(-1)], 1)
 
         # FINAL PROJECTION
         x = self.final_projection(x)
-        return x
+        return x, interim_activations
 
     def loss(self, x, f0, singer, drop_tokens):
         # pdb.set_trace()
@@ -1036,7 +1051,7 @@ class UNetPitchConditioned(UNetBase):
         noise = self.unpad(padded_noise, padding)
         return noise
 
-    def sample_cfg(self, batch_size: int, num_steps: int, f0=None, singer=[4, 25, 45, 32], strength=1, invert_audio_fn=None, log_interim_samples=False):
+    def sample_cfg(self, batch_size: int, num_steps: int, f0=None, singer=[4, 25, 45, 32], strength=1, invert_audio_fn=None, log_interim_samples=False, log_interim_forward_activations=False):
         # CREATE INITIAL NOISE
         noise = torch.normal(mean=0, std=1, size=(batch_size, self.inp_dim, self.seq_len)).to(self.device)
         padded_noise, padding = self.pad_to(noise, self.strides_prod)
@@ -1052,18 +1067,24 @@ class UNetPitchConditioned(UNetBase):
             # f0 = torch.tensor(f0).to(self.device)
         # singer = torch.Tensor(np.choice(singer, batch_size, replace=True)).to(self.device)
         padded_f0, _ = self.pad_to(f0, self.strides_prod)
+        if log_interim_samples:
+            logits = {}
+        else:
+            logits = None
         with torch.no_grad():
             # SAMPLE FROM MODEL
             for t in np.linspace(0, 1, num_steps + 1)[:-1]:
                 t_tensor = torch.tensor(t)
                     
-                unconditioned_logits = self.forward(padded_noise, t_tensor * t_array, padded_f0, singer, drop_tokens=False, drop_all=True)
-                conditioned_logits = self.forward(padded_noise, t_tensor * t_array, padded_f0, singer, drop_tokens=False, drop_all=False)
+                unconditioned_logits, unconditioned_interim_activations = self.forward(padded_noise, t_tensor * t_array, padded_f0, singer, drop_tokens=False, drop_all=True, return_interim_activations=log_interim_forward_activations)
+                conditioned_logits, conditioned_interim_activations = self.forward(padded_noise, t_tensor * t_array, padded_f0, singer, drop_tokens=False, drop_all=False, return_interim_activations=log_interim_forward_activations)
                 total_logits = strength * conditioned_logits + (1 - strength) * unconditioned_logits
                 padded_noise = padded_noise + 1 / num_steps * total_logits
-            
+                if log_interim_samples:
+                    logits[t] = self.unpad(padded_noise, padding)
+
             noise = self.unpad(padded_noise, padding)
-        return noise, f0, singer
+        return noise, f0, singer, (logits, unconditioned_interim_activations, conditioned_interim_activations)
 
     def on_validation_epoch_end(self) -> None:
         with torch.no_grad():
