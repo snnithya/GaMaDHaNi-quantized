@@ -228,7 +228,6 @@ class ResNetBlock(nn.Module):
             self.process_layer = DownSampleLayer(in_channels, out_channels, kernel_size=kernel_size, stride=stride, padding=stride//2, num_convs=num_convs, norm=norm, nonlinearity=nonlinearity, dropout=dropout)
 
     def forward(self, x):
-        # pdb.set_trace()
         inputs = x.clone()
         for layer in self.input_layers:
             inputs = layer(inputs)
@@ -1071,6 +1070,12 @@ class UNetPitchConditioned(UNetBase):
             logits = {}
         else:
             logits = None
+        if log_interim_forward_activations:
+            unconditioned_forward_activations = {}
+            conditioned_forward_activations = {}
+        else:
+            unconditioned_forward_activations = None
+            conditioned_forward_activations = None
         with torch.no_grad():
             # SAMPLE FROM MODEL
             for t in np.linspace(0, 1, num_steps + 1)[:-1]:
@@ -1083,8 +1088,12 @@ class UNetPitchConditioned(UNetBase):
                 if log_interim_samples:
                     logits[t] = self.unpad(padded_noise, padding)
 
+                if log_interim_forward_activations:
+                    unconditioned_forward_activations[t] = unconditioned_interim_activations
+                    conditioned_forward_activations[t] = conditioned_interim_activations
+
             noise = self.unpad(padded_noise, padding)
-        return noise, f0, singer, (logits, unconditioned_interim_activations, conditioned_interim_activations)
+        return noise, f0, singer, (logits, unconditioned_forward_activations, conditioned_forward_activations)
 
     def on_validation_epoch_end(self) -> None:
         with torch.no_grad():
