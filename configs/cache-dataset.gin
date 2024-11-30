@@ -1,0 +1,58 @@
+from __gin__ import dynamic_registration
+from gamadhani.src import dataset
+from gamadhani.src import model_diffusion
+from gamadhani.utils import pitch_to_audio_utils
+import torch
+
+# Macros:
+# ==============================================================================
+NFFT = 1024
+NUM_MELS = 192
+SR = 16000
+
+# Parameters for pitch_to_audio_utils.audio_to_normalized_mels:
+# ==============================================================================
+pitch_to_audio_utils.audio_to_normalized_mels.nfft = %NFFT
+pitch_to_audio_utils.audio_to_normalized_mels.num_mels = %NUM_MELS
+pitch_to_audio_utils.audio_to_normalized_mels.sr = %SR
+
+# Parameters for pitch_to_audio_utils.from_mels:
+# ==============================================================================
+pitch_to_audio_utils.from_mels.nfft = %NFFT
+pitch_to_audio_utils.from_mels.num_mels = %NUM_MELS
+pitch_to_audio_utils.from_mels.sr = %SR
+
+# Parameters for dataset.mel_pitch:
+# ==============================================================================
+dataset.mel_pitch.max_clip = 600
+dataset.mel_pitch.min_clip = 200
+dataset.mel_pitch.min_norm_pitch = -4915
+dataset.mel_pitch.nfft = %NFFT
+dataset.mel_pitch.pitch_downsample = 10
+
+# Parameters for pitch_to_audio_utils.normalized_mels_to_audio:
+# ==============================================================================
+pitch_to_audio_utils.normalized_mels_to_audio.n_iter = 200
+pitch_to_audio_utils.normalized_mels_to_audio.nfft = %NFFT
+pitch_to_audio_utils.normalized_mels_to_audio.num_mels = %NUM_MELS
+pitch_to_audio_utils.normalized_mels_to_audio.sr = %SR
+
+# Parameters for pitch_to_audio_utils.to_mels:
+# ==============================================================================
+pitch_to_audio_utils.to_mels.nfft = %NFFT
+pitch_to_audio_utils.to_mels.num_mels = %NUM_MELS
+pitch_to_audio_utils.to_mels.sr = %SR
+
+# Parameters for pitch_to_audio_utils.torch_gl:
+# ==============================================================================
+pitch_to_audio_utils.torch_gl.n_iter = 200
+pitch_to_audio_utils.torch_gl.nfft = %NFFT
+pitch_to_audio_utils.torch_gl.sr = %SR
+
+# Parameters for pitch_to_audio_utils.torch_istft:
+# ==============================================================================
+pitch_to_audio_utils.torch_istft.nfft = %NFFT
+
+# Parameters for pitch_to_audio_utils.torch_stft:
+# ==============================================================================
+pitch_to_audio_utils.torch_stft.nfft = %NFFT

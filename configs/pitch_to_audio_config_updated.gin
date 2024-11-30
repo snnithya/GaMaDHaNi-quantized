@@ -1,9 +1,9 @@
 from __gin__ import dynamic_registration
 from gamadhani import src
 from gamadhani.src import dataset
-from gamadhani.src import model_diffusion
-from gamadhani.utils import pitch_to_audio_utils
+from gamadhani.src import model_diffusion 
 from gamadhani.src import task_functions
+from gamadhani.utils import pitch_to_audio_utils
 from gamadhani.utils import utils
 import torch
 
@@ -54,7 +54,8 @@ dataset.SequenceDataset.task = @dataset.Task()
 
 # Parameters for dataset.Task:
 # ==============================================================================
-dataset.Task.read_fn = @task_functions.load_cached_dataset
+dataset.Task.invert_fn = @pitch_to_audio_utils.normalized_mels_to_audio
+dataset.Task.read_fn = @src.task_functions.load_cached_dataset
 dataset.Task.kwargs = {"audio_len": %AUDIO_SEQ_LEN,
                        "return_singer": %SINGER_CONDITIONING} 
 
