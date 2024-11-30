@@ -10,7 +10,6 @@ import numpy as np
 from torch.utils.data import Dataset, Subset
 from gamadhani.src.protobuf.data_example import AudioExample
 from sklearn.preprocessing import QuantileTransformer
-import gamadhani.utils.pitch_to_audio_utils as p2a
 
 
 TensorDict = Dict[str, torch.Tensor]
@@ -26,7 +25,7 @@ class Task:
     def __init__(self, read_fn: Callable[..., Any], invert_fn: Callable[..., Any], **kwargs):
         self.read_fn = partial(read_fn, **kwargs)
         self.invert_fn = partial(invert_fn, **kwargs)
-        self.extra_args = kwargs["kwargs"] if kwargs#because of gin file?
+        self.extra_args = kwargs.get("kwargs", {}) #because of gin file?
 
     def read_(self, **kwargs):
         merged_args = {**self.extra_args, **kwargs}
@@ -247,3 +246,34 @@ def load_cached_audio(
         audio_data = audio_data[:, audio_start:audio_end]
     return torch.Tensor(audio_data)
 
+# need to add a silence token / range, calculate pitch avg
+def load_cached_dataset(
+        inputs: TensorDict, 
+        audio_len: float,
+        return_singer: bool = False
+    ) -> Tuple[torch.Tensor, torch.Tensor]: 
+    # pdb.set_trace()
+    audio_sr = inputs['audio']['sampling_rate']
+    audio_data = inputs['audio']['data']
+    audio_start = randint(0, audio_data.shape[1] - audio_len - 1)
+    audio_end = audio_start + audio_len
+    audio_data = audio_data[:, audio_start:audio_end]
+
+    pitch_sr = inputs['pitch']['sampling_rate']
+    pitch_len = np.floor(audio_len / audio_sr * pitch_sr).astype(int)
+    pitch_data = inputs['pitch']['data']
+    pitch_start = np.floor(audio_start * pitch_sr / audio_sr).astype(int)
+    pitch_end = pitch_start + pitch_len
+    pitch_data = pitch_data[pitch_start:pitch_end]
+    
+    # interpolate data to match audio length
+    pitch_inds = np.linspace(0, pitch_data.shape[0], num=audio_len, endpoint=False) #check here
+    pitch_data = np.interp(pitch_inds, np.arange(0, pitch_data.shape[0]), pitch_data)
+
+    if return_singer:
+        singer = torch.Tensor([inputs['global_conditions']['singer']])
+    else:
+        singer = None
+    
+    # print(audio_data.shape, pitch_data.shape, singer.shape if singer is not None else None)
+    return torch.Tensor(audio_data), torch.Tensor(pitch_data), singer

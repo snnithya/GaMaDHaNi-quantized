@@ -162,7 +162,8 @@ def invert_pitch_read_downsample_diff(f0,
 def load_cached_dataset(
         inputs: TensorDict, 
         audio_len: float,
-        return_singer: bool = False
+        return_singer: bool = False,
+        **kwargs
     ) -> Tuple[torch.Tensor, torch.Tensor]: 
     # pdb.set_trace()
     audio_sr = inputs['audio']['sampling_rate']
