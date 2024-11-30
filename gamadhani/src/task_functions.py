@@ -4,6 +4,7 @@ from sklearn.preprocessing import QuantileTransformer
 import gin
 import numpy as np
 import torch
+from typing import Tuple
 
 TensorDict = Dict[str, torch.Tensor]
 
@@ -156,3 +157,35 @@ def invert_pitch_read_downsample_diff(f0,
     f0[np.isnan(f0)] = 0
 
     return f0
+
+# need to add a silence token / range, calculate pitch avg
+def load_cached_dataset(
+        inputs: TensorDict, 
+        audio_len: float,
+        return_singer: bool = False
+    ) -> Tuple[torch.Tensor, torch.Tensor]: 
+    # pdb.set_trace()
+    audio_sr = inputs['audio']['sampling_rate']
+    audio_data = inputs['audio']['data']
+    audio_start = randint(0, audio_data.shape[1] - audio_len - 1)
+    audio_end = audio_start + audio_len
+    audio_data = audio_data[:, audio_start:audio_end]
+
+    pitch_sr = inputs['pitch']['sampling_rate']
+    pitch_len = np.floor(audio_len / audio_sr * pitch_sr).astype(int)
+    pitch_data = inputs['pitch']['data']
+    pitch_start = np.floor(audio_start * pitch_sr / audio_sr).astype(int)
+    pitch_end = pitch_start + pitch_len
+    pitch_data = pitch_data[pitch_start:pitch_end]
+    
+    # interpolate data to match audio length
+    pitch_inds = np.linspace(0, pitch_data.shape[0], num=audio_len, endpoint=False) #check here
+    pitch_data = np.interp(pitch_inds, np.arange(0, pitch_data.shape[0]), pitch_data)
+
+    if return_singer:
+        singer = torch.Tensor([inputs['global_conditions']['singer']])
+    else:
+        singer = None
+    
+    # print(audio_data.shape, pitch_data.shape, singer.shape if singer is not None else None)
+    return torch.Tensor(audio_data), torch.Tensor(pitch_data), singer
