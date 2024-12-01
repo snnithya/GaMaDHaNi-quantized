@@ -50,4 +50,4 @@ def convert_to_wav(input_dir, sample_rate=16000):
 
 if __name__ == "__main__":
     input_directory = "./examples"
-    convert_pt_to_wav_with_check(input_directory)
+    convert_to_wav(input_directory)
