@@ -2,7 +2,7 @@ import os
 import torch
 import soundfile as sf
 
-def convert_pt_to_wav_with_check(input_dir, sample_rate=16000):
+def convert_to_wav(input_dir, sample_rate=16000):
     """
     Converts all .pt files in a directory to .wav files inside a 'wavs/' subfolder.
     - Skips conversion if the corresponding .wav file already exists.
