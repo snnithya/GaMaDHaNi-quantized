@@ -1,0 +1,6 @@
+file,MCD,LSD,FAD
+weight_quantized_per_channel_8_bit_100_steps_channel_5.wav,514.537126577128,16.324545,206.97669344306132
+weight_quantized_global_8_bit_10_steps_channel_5.wav,914.9533186035884,28.570047,294.5362009604346
+base_model_100_steps_channel_5.wav,551.6903572464843,17.338268,210.61958392137052
+weight_quantized_per_channel_4_bit_4_steps_channel_5.wav,736.4768719804866,30.376568,326.44362996307837
+weight_quantized_global_4_bit_3_steps_channel_5.wav,825.5868578771396,30.813631,306.6617668591002
