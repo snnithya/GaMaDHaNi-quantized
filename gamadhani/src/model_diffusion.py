@@ -956,12 +956,13 @@ class UNetPitchConditioned(UNetBase):
         # DOWNSAMPLING
         # pdb.set_trace()
         for ind, downsample_layer in enumerate(self.downsample_layers):
-            # print(f'Down sample layer {ind}')
+            print(f'Down sample layer {ind}')
             # pdb.set_trace()
+            print('Before conditions', x.shape)
             skips.append(torch.cat([x, f0], -2))
             for cond in conditions:
                 x = _concat_condition(x, cond)
-            # print(x.shape, time.shape, f0.shape, skips[-1].shape)
+            print('After conditions', x.shape)
             x = downsample_layer(x)
             if interim_activations is not None:
                 interim_activations[f"downsample_layer_{ind}"] = x.clone().detach()
