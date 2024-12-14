@@ -7,7 +7,9 @@ Additionally, we evaluate our audio samples using several different audio metric
 ![FAD dotplot](eval/examples/wavs/FAD_dotplot.png)
 ![FAD boxplot](eval/examples/wavs/FAD_boxplot.png)
 
-
 The generated audio samples from each quantization scheme can be found in this repository [here](eval/examples/wavs), separated by original sample. We also created a [demo page](https://buttery-hair-d59.notion.site/151126c18dd6803b9431dcc7f7ad470e?v=5b8a8c4e23ea46979573158670f636d5) that shows three audio samples side-to-side.
+
+## Notebooks
+The quantization experiments and analysis of activation values by time, diffusion step, and layer can be conducted by running [quantization_experiments.ipynb](quantization_experiments.ipynb). The audio metics can be calculated by running [eval_audio_quality.ipynb](eval/eval_audio_quality.ipynb). 
 
 Original GaMaDHaNi repo can be found [here](https://github.com/snnithya/GaMaDHaNi).
