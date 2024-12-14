@@ -1,6 +1,7 @@
 # Quantizing GaMaDHaNi
 In this project, we explored various quantization schemes for audio diffusion models, focusing on [GaMaDHaNi](https://github.com/snnithya/GaMaDHaNi), a diffusion model for generating Hindustani vocal passages. Quantizing diffusion models can be especially difficult because of accumuluation of quantization errors across diffusion steps, variability in activation range between diffusion steps, and the bimodal activation distribution resulting from disparities between the activation ranges of skip connections and the tensors they are concatenated to. In addition, GaMaDHaNi uess a conditional audio diffusion model where the conditioning signals additionally cause the weight distributions to be multimodal. We developed a novel per-group quantization technique that quantizes the model weights corresponding to conditioning signals, skip connections, and layer outputs separately. 
 
+![activations by channel](activation_by_channel.png)
 
 Additionally, we evaluate our audio samples using several different audio metrics - Fréchet Audio Distance, Mel-Cepstral Distortion, and Log Spectral Distortion. By using multiple metrics, we aimed to capture different aspects of perceptual quality to obtain quantitative comparisons between our generated audio samples. Ultimately, we found that per-group 8-bit quantization produced the best results across metrics and through qualitative assessment.
 ![FAD dotplot](eval/examples/wavs/FAD_dotplot.png)
