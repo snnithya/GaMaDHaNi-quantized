@@ -12,4 +12,5 @@ The generated audio samples from each quantization scheme can be found in this r
 ## Notebooks
 The quantization experiments and analysis of activation values by time, diffusion step, and layer can be conducted by running [quantization_experiments.ipynb](quantization_experiments.ipynb). The audio metics can be calculated by running [eval_audio_quality.ipynb](eval/eval_audio_quality.ipynb). 
 
+## GaMaDHaNi
 Original GaMaDHaNi repo can be found [here](https://github.com/snnithya/GaMaDHaNi).
